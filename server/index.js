@@ -15,6 +15,7 @@ app.use('/api/notes', require('./routes/notes'));
 app.use('/api/nutrition', require('./routes/nutrition'));
 app.use('/api/goals', require('./routes/goals'));
 app.use('/api/exercise', require('./routes/exercise'));
+app.use('/api/challenges', require('./routes/challenges'));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

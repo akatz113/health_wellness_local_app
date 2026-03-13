@@ -270,4 +270,96 @@ router.get('/stats/weekly', (req, res) => {
   res.json({ totalMinutes, totalSessions, streak, days: rows, start, end });
 });
 
+// ── Workout Plans ─────────────────────────────────────────────────────────────
+
+router.get('/plans', (req, res) => {
+  const plans = db.prepare('SELECT * FROM workout_plans ORDER BY updated_at DESC').all();
+
+  const result = plans.map(plan => {
+    const blocks = db.prepare('SELECT * FROM workout_plan_blocks WHERE plan_id = ? ORDER BY day_of_week ASC, sort_order ASC').all(plan.id);
+
+    const totalsByCategory = { cardio: 0, strength: 0, flexibility: 0 };
+    blocks.forEach(b => {
+      if (totalsByCategory[b.category] !== undefined) {
+        totalsByCategory[b.category] += b.duration_minutes;
+      }
+    });
+
+    const totalMinutes = blocks.reduce((s, b) => s + b.duration_minutes, 0);
+
+    return { ...plan, blocks, totalsByCategory, totalMinutes };
+  });
+
+  res.json(result);
+});
+
+router.get('/plans/:id', (req, res) => {
+  const plan = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  if (!plan) return res.status(404).json({ error: 'Not found' });
+
+  const blocks = db.prepare('SELECT * FROM workout_plan_blocks WHERE plan_id = ? ORDER BY day_of_week ASC, sort_order ASC').all(plan.id);
+
+  const totalsByCategory = { cardio: 0, strength: 0, flexibility: 0 };
+  blocks.forEach(b => {
+    if (totalsByCategory[b.category] !== undefined) {
+      totalsByCategory[b.category] += b.duration_minutes;
+    }
+  });
+
+  res.json({ ...plan, blocks, totalsByCategory });
+});
+
+router.post('/plans', (req, res) => {
+  const { name, description, blocks } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  if (!blocks || blocks.length === 0) return res.status(400).json({ error: 'At least one block is required' });
+
+  const result = db.prepare(
+    'INSERT INTO workout_plans (name, description) VALUES (?, ?)'
+  ).run(name, description || null);
+
+  const planId = result.lastInsertRowid;
+
+  blocks.forEach((block, idx) => {
+    db.prepare(
+      'INSERT INTO workout_plan_blocks (plan_id, day_of_week, activity_type, category, duration_minutes, notes, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(planId, block.day_of_week, block.activity_type, block.category || 'cardio', block.duration_minutes, block.notes || null, block.sort_order ?? idx);
+  });
+
+  const created = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(planId);
+  const createdBlocks = db.prepare('SELECT * FROM workout_plan_blocks WHERE plan_id = ? ORDER BY day_of_week ASC, sort_order ASC').all(planId);
+  res.status(201).json({ ...created, blocks: createdBlocks });
+});
+
+router.put('/plans/:id', (req, res) => {
+  const existing = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
+  const { name, description, blocks } = req.body;
+
+  db.prepare(
+    "UPDATE workout_plans SET name=?, description=?, updated_at=datetime('now') WHERE id=?"
+  ).run(name ?? existing.name, description !== undefined ? description : existing.description, req.params.id);
+
+  if (blocks) {
+    db.prepare('DELETE FROM workout_plan_blocks WHERE plan_id = ?').run(req.params.id);
+    blocks.forEach((block, idx) => {
+      db.prepare(
+        'INSERT INTO workout_plan_blocks (plan_id, day_of_week, activity_type, category, duration_minutes, notes, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(req.params.id, block.day_of_week, block.activity_type, block.category || 'cardio', block.duration_minutes, block.notes || null, block.sort_order ?? idx);
+    });
+  }
+
+  const updated = db.prepare('SELECT * FROM workout_plans WHERE id = ?').get(req.params.id);
+  const updatedBlocks = db.prepare('SELECT * FROM workout_plan_blocks WHERE plan_id = ? ORDER BY day_of_week ASC, sort_order ASC').all(req.params.id);
+  res.json({ ...updated, blocks: updatedBlocks });
+});
+
+router.delete('/plans/:id', (req, res) => {
+  db.prepare('DELETE FROM workout_plan_blocks WHERE plan_id = ?').run(req.params.id);
+  const result = db.prepare('DELETE FROM workout_plans WHERE id = ?').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ success: true });
+});
+
 module.exports = router;

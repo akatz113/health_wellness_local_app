@@ -1,293 +1,354 @@
 import { useEffect, useState, useRef } from 'react';
-import { format, subDays, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import {
-  MapPin, Search, Wind, Droplets, Thermometer,
-  Plus, Trash2, Pencil, X, Flame, Clock, TrendingUp, Dumbbell,
+  Plus, Trash2, X, Save, BookOpen, Eye, Pencil, GripVertical,
+  Target,
 } from 'lucide-react';
 
-const ACTIVITY_TYPES = [
-  'Running', 'Walking', 'Cycling', 'Swimming', 'Hiking',
-  'Gym / Weight Training', 'Home HIIT', 'Yoga / Pilates',
-  'Indoor Cycling', 'Treadmill / Elliptical', 'Other',
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const CATEGORIES = [
+  { key: 'cardio', label: 'Cardio', color: 'bg-blue-500', lightBg: 'bg-blue-50', lightText: 'text-blue-700', border: 'border-blue-200' },
+  { key: 'strength', label: 'Strength', color: 'bg-orange-500', lightBg: 'bg-orange-50', lightText: 'text-orange-700', border: 'border-orange-200' },
+  { key: 'flexibility', label: 'Flexibility & Rehab', color: 'bg-green-500', lightBg: 'bg-green-50', lightText: 'text-green-700', border: 'border-green-200' },
 ];
 
-const INTENSITY_COLORS = {
-  light:    'bg-green-100 text-green-700',
-  moderate: 'bg-yellow-100 text-yellow-700',
-  vigorous: 'bg-red-100 text-red-700',
+const ACTIVITY_TEMPLATES = {
+  cardio: [
+    { name: 'Running', icon: '🏃', defaultMin: 30 },
+    { name: 'Cycling', icon: '🚴', defaultMin: 45 },
+    { name: 'Swimming', icon: '🏊', defaultMin: 30 },
+    { name: 'Walking', icon: '🚶', defaultMin: 30 },
+    { name: 'HIIT', icon: '💪', defaultMin: 20 },
+    { name: 'Jump Rope', icon: '🤸', defaultMin: 15 },
+    { name: 'Rowing', icon: '🚣', defaultMin: 30 },
+    { name: 'Stair Climber', icon: '🪜', defaultMin: 20 },
+  ],
+  strength: [
+    { name: 'Upper Body', icon: '💪', defaultMin: 45 },
+    { name: 'Lower Body', icon: '🦵', defaultMin: 45 },
+    { name: 'Push Day', icon: '🏋️', defaultMin: 60 },
+    { name: 'Pull Day', icon: '🏋️', defaultMin: 60 },
+    { name: 'Leg Day', icon: '🦵', defaultMin: 60 },
+    { name: 'Full Body', icon: '💪', defaultMin: 45 },
+    { name: 'Core', icon: '🎯', defaultMin: 20 },
+    { name: 'Arms', icon: '💪', defaultMin: 30 },
+  ],
+  flexibility: [
+    { name: 'Yoga', icon: '🧘', defaultMin: 30 },
+    { name: 'Stretching', icon: '🤸', defaultMin: 15 },
+    { name: 'Pilates', icon: '🧘', defaultMin: 30 },
+    { name: 'Foam Rolling', icon: '🧴', defaultMin: 15 },
+    { name: 'Physical Therapy', icon: '🏥', defaultMin: 30 },
+    { name: 'Mobility Work', icon: '🤸', defaultMin: 20 },
+  ],
 };
 
-const emptyForm = {
-  activity_type: '', duration_minutes: '', intensity: 'moderate',
-  distance: '', distance_unit: 'miles', calories_burned: '', notes: '',
-  log_date: format(new Date(), 'yyyy-MM-dd'),
-};
+const DURATION_OPTIONS = [15, 20, 30, 45, 60, 75, 90];
 
-// ── Weather Widget ─────────────────────────────────────────────────────────────
-
-function WeatherWidget({ weather, onChangeLocation }) {
-  const { outdoorOk, isWindy, reason, suggestions } = weather.suggestions;
-
-  const bgGradient = weather.isDay
-    ? outdoorOk ? 'from-blue-500 to-cyan-400' : 'from-slate-600 to-slate-500'
-    : 'from-slate-800 to-slate-700';
-
-  return (
-    <div className={`rounded-2xl bg-gradient-to-br ${bgGradient} text-white overflow-hidden`}>
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-1.5 text-white/80 text-sm mb-1">
-              <MapPin size={13} />
-              <span>{weather.location}</span>
-            </div>
-            <div className="flex items-end gap-3">
-              <span className="text-6xl font-light">{weather.temp}°</span>
-              <div className="mb-2">
-                <p className="text-4xl">{weather.icon}</p>
-              </div>
-            </div>
-            <p className="text-white/90 font-medium">{weather.condition}</p>
-            <p className="text-white/70 text-sm">Feels like {weather.feelsLike}°F</p>
-          </div>
-          <button
-            onClick={onChangeLocation}
-            className="text-white/60 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            Change location
-          </button>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex gap-4 text-sm text-white/80 mb-5">
-          <div className="flex items-center gap-1.5">
-            <Wind size={14} />
-            <span>{weather.windMph} mph</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Droplets size={14} />
-            <span>{weather.precipitation}" precip</span>
-          </div>
-        </div>
-
-        {/* Exercise recommendation */}
-        <div className={`rounded-xl p-3 mb-4 ${outdoorOk ? 'bg-white/20' : 'bg-black/20'}`}>
-          <p className="text-sm font-semibold">{outdoorOk ? '✅ Great for outdoor exercise' : isWindy ? '💨 Consider sheltered routes' : '🏠 Better to exercise indoors'}</p>
-          <p className="text-xs text-white/80 mt-0.5">{reason}</p>
-        </div>
-
-        {/* Hourly forecast */}
-        {weather.hourly?.length > 0 && (
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            {weather.hourly.map((h, i) => (
-              <div key={i} className="flex-shrink-0 text-center bg-white/10 rounded-lg px-3 py-2">
-                <p className="text-xs text-white/70">{new Date(h.time).getHours()}:00</p>
-                <p className="text-lg my-0.5">{h.wmo.icon}</p>
-                <p className="text-xs font-medium">{Math.round(h.temp)}°</p>
-                {h.precipProb > 0 && <p className="text-xs text-blue-200">{h.precipProb}%</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Suggested activities */}
-      <div className="bg-black/20 px-6 py-4">
-        <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-3">Suggested Activities</p>
-        <div className="flex flex-wrap gap-2">
-          {suggestions.slice(0, 5).map((s, i) => (
-            <span key={i} className="text-sm bg-white/15 hover:bg-white/25 px-3 py-1 rounded-full cursor-default transition-colors">
-              {s.icon} {s.name}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function getCategoryConfig(cat) {
+  return CATEGORIES.find(c => c.key === cat) || CATEGORIES[0];
 }
 
-// ── Location Setup ─────────────────────────────────────────────────────────────
+// ─── Workout Block ───────────────────────────────────────────────────────────
 
-function LocationSetup({ onSave }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState('');
-  const timer = useRef(null);
-
-  const search = async (q) => {
-    if (!q.trim()) { setResults([]); return; }
-    setSearching(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/exercise/geocode?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else setResults(data);
-    } catch { setError('Search failed. Is the server running?'); }
-    setSearching(false);
-  };
-
-  const handleInput = (e) => {
-    setQuery(e.target.value);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => search(e.target.value), 400);
-  };
-
-  const select = async (loc) => {
-    await fetch('/api/exercise/location', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loc),
-    });
-    onSave(loc);
-  };
-
+function WorkoutBlock({ block, onRemove, onUpdateDuration, draggable, onDragStart, onDragEnd }) {
+  const cat = getCategoryConfig(block.category);
   return (
-    <div className="card p-8 text-center max-w-md mx-auto">
-      <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <MapPin size={28} className="text-blue-500" />
-      </div>
-      <h2 className="text-xl font-bold text-gray-900 mb-1">Set your location</h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Weather data powers exercise suggestions. Uses Open-Meteo — free, no account needed.
-      </p>
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          className="input pl-9"
-          value={query}
-          onChange={handleInput}
-          placeholder="Search city, e.g. Boston"
-          autoFocus
-        />
-        {searching && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-      </div>
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-      {results.length > 0 && (
-        <div className="mt-2 border border-gray-200 rounded-xl divide-y text-left">
-          {results.map((r, i) => (
-            <button key={i} onClick={() => select(r)}
-              className="w-full px-4 py-3 hover:bg-blue-50 text-sm text-gray-800 text-left transition-colors first:rounded-t-xl last:rounded-b-xl">
-              <MapPin size={13} className="inline mr-2 text-gray-400" />{r.name}
-            </button>
-          ))}
+    <div
+      className={`rounded-lg border ${cat.border} ${cat.lightBg} p-2.5 flex items-center gap-2 group ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+    >
+      {draggable && <GripVertical size={14} className="text-gray-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium ${cat.lightText}`}>{block.activity_type}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <select
+            className="text-xs bg-white/80 border border-gray-200 rounded px-1.5 py-0.5"
+            value={block.duration_minutes}
+            onChange={e => onUpdateDuration(parseInt(e.target.value))}
+          >
+            {DURATION_OPTIONS.map(d => (
+              <option key={d} value={d}>{d} min</option>
+            ))}
+          </select>
+          <span className={`text-xs px-1.5 py-0.5 rounded ${cat.color} text-white`}>{cat.label}</span>
         </div>
+      </div>
+      {onRemove && (
+        <button onClick={onRemove} className="btn-ghost p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <X size={14} />
+        </button>
       )}
     </div>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ─── Goal Requirement Banner ─────────────────────────────────────────────────
+
+function GoalRequirementBanner({ onGoToGoals }) {
+  return (
+    <div className="card text-center py-16">
+      <Target size={48} className="mx-auto text-indigo-300 mb-4" />
+      <h2 className="text-xl font-bold text-gray-900 mb-2">Set an Exercise Goal First</h2>
+      <p className="text-sm text-gray-500 max-w-md mx-auto mb-2">
+        To build a weekly workout plan, you need an exercise goal that defines your target minutes for cardio, strength training, and/or flexibility work.
+      </p>
+      <p className="text-xs text-gray-400 max-w-sm mx-auto mb-6">
+        Go to the Goals tab, create an exercise goal (e.g. &ldquo;150 minutes of cardio per week&rdquo;), then come back here to plan your week.
+      </p>
+      <button className="btn-primary" onClick={onGoToGoals}>
+        <Target size={16} /> Go to Goals
+      </button>
+    </div>
+  );
+}
+
+// ─── Goal Summary Bar ────────────────────────────────────────────────────────
+
+function GoalSummaryBar({ goals, planTotals }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {CATEGORIES.map(cat => {
+        const goal = goals.find(g => {
+          const metricKey = g.metric_key || '';
+          const [metric, activity] = metricKey.split(':');
+          // Match goals that are session or minutes-based exercise goals
+          // Check if the activity filter loosely matches the category
+          const activityLower = (activity || '').toLowerCase();
+          if (cat.key === 'cardio') return activityLower.includes('cardio') || activityLower.includes('running') || activityLower.includes('cycling') || activityLower.includes('swimming') || (!activity && metric === 'minutes');
+          if (cat.key === 'strength') return activityLower.includes('strength') || activityLower.includes('weight') || activityLower.includes('gym');
+          if (cat.key === 'flexibility') return activityLower.includes('flex') || activityLower.includes('yoga') || activityLower.includes('rehab') || activityLower.includes('pilates');
+          return false;
+        });
+
+        const targetMin = goal?.target_value || 0;
+        const plannedMin = planTotals[cat.key] || 0;
+        const pct = targetMin > 0 ? Math.min((plannedMin / targetMin) * 100, 100) : 0;
+
+        return (
+          <div key={cat.key} className={`rounded-xl border p-3 ${cat.lightBg} ${cat.border}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className={`text-xs font-semibold ${cat.lightText}`}>{cat.label}</span>
+              <span className="text-xs text-gray-500">
+                {plannedMin} / {targetMin > 0 ? `${targetMin} min` : 'no goal'}
+              </span>
+            </div>
+            <div className="h-2 bg-white/80 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${cat.color}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function Exercise() {
-  const [location, setLocation] = useState(undefined); // undefined = loading, null = not set
-  const [weather, setWeather] = useState(null);
-  const [weatherLoading, setWeatherLoading] = useState(false);
-  const [weatherError, setWeatherError] = useState('');
-  const [log, setLog] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
-  const [showLocationSetup, setShowLocationSetup] = useState(false);
+  const [activeView, setActiveView] = useState('plan'); // 'plan' | 'saved'
+  const [exerciseGoals, setExerciseGoals] = useState(null); // null = loading
+  const [hasGoal, setHasGoal] = useState(false);
 
-  // Load location on mount
+  // Planner state - blocks organized by day (0-6)
+  const [planBlocks, setPlanBlocks] = useState(() => DAYS.map(() => []));
+  const [planName, setPlanName] = useState('');
+  const [planDescription, setPlanDescription] = useState('');
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+
+  // Saved plans state
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [savedLoading, setSavedLoading] = useState(true);
+  const [viewingPlan, setViewingPlan] = useState(null);
+
+  // Drag state
+  const dragData = useRef(null);
+
+  // Activity picker
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerDay, setPickerDay] = useState(0);
+  const [pickerCategory, setPickerCategory] = useState('cardio');
+
+  // Load exercise goals
   useEffect(() => {
-    fetch('/api/exercise/location').then(r => r.json()).then(loc => {
-      setLocation(loc); // null if not set
+    fetch('/api/goals').then(r => r.json()).then(goals => {
+      const exGoals = goals.filter(g => g.category === 'exercise' && g.active);
+      setExerciseGoals(exGoals);
+      setHasGoal(exGoals.length > 0);
     });
   }, []);
 
-  // Load weather when location is available
-  useEffect(() => {
-    if (!location) return;
-    setWeatherLoading(true);
-    setWeatherError('');
-    fetch('/api/exercise/weather')
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) setWeatherError(data.error);
-        else setWeather(data);
-        setWeatherLoading(false);
-      })
-      .catch(() => { setWeatherError('Could not load weather'); setWeatherLoading(false); });
-  }, [location]);
-
-  const loadLog = () => {
-    const end = format(new Date(), 'yyyy-MM-dd');
-    const start = format(subDays(new Date(), 29), 'yyyy-MM-dd');
-    fetch(`/api/exercise?start=${start}&end=${end}`)
-      .then(r => r.json()).then(setLog);
-    fetch('/api/exercise/stats/weekly')
-      .then(r => r.json()).then(setStats);
+  // Load saved plans
+  const loadPlans = async () => {
+    const data = await fetch('/api/exercise/plans').then(r => r.json());
+    setSavedPlans(data);
+    setSavedLoading(false);
   };
 
-  useEffect(() => { loadLog(); }, []);
+  useEffect(() => { loadPlans(); }, []);
 
-  const openAdd = (activityName) => {
-    setForm({
-      ...emptyForm,
-      activity_type: activityName || '',
-      log_date: format(new Date(), 'yyyy-MM-dd'),
+  // ─── Plan block manipulation ────────────────────────────────────────────
+
+  const addBlock = (dayIdx, activity_type, category, duration_minutes) => {
+    setPlanBlocks(prev => {
+      const updated = prev.map(d => [...d]);
+      updated[dayIdx] = [...updated[dayIdx], {
+        _key: Date.now() + Math.random(),
+        activity_type,
+        category,
+        duration_minutes,
+        day_of_week: dayIdx,
+      }];
+      return updated;
     });
-    setEditingId(null);
-    setShowForm(true);
   };
 
-  const openEdit = (entry) => {
-    setForm({ ...entry, duration_minutes: entry.duration_minutes ?? '', distance: entry.distance ?? '', calories_burned: entry.calories_burned ?? '' });
-    setEditingId(entry.id);
-    setShowForm(true);
+  const removeBlock = (dayIdx, blockIdx) => {
+    setPlanBlocks(prev => {
+      const updated = prev.map(d => [...d]);
+      updated[dayIdx] = updated[dayIdx].filter((_, i) => i !== blockIdx);
+      return updated;
+    });
   };
 
-  const handleSubmit = async (e) => {
+  const updateBlockDuration = (dayIdx, blockIdx, newDuration) => {
+    setPlanBlocks(prev => {
+      const updated = prev.map(d => [...d]);
+      updated[dayIdx] = updated[dayIdx].map((b, i) =>
+        i === blockIdx ? { ...b, duration_minutes: newDuration } : b
+      );
+      return updated;
+    });
+  };
+
+  // ─── Drag and drop ──────────────────────────────────────────────────────
+
+  const handleDragStart = (dayIdx, blockIdx) => (e) => {
+    dragData.current = { fromDay: dayIdx, blockIdx };
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
     e.preventDefault();
-    setSaving(true);
-    const method = editingId ? 'PUT' : 'POST';
-    const url = editingId ? `/api/exercise/${editingId}` : '/api/exercise';
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...form,
-        duration_minutes: form.duration_minutes !== '' ? parseInt(form.duration_minutes) : null,
-        distance: form.distance !== '' ? parseFloat(form.distance) : null,
-        calories_burned: form.calories_burned !== '' ? parseInt(form.calories_burned) : null,
-      }),
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (toDayIdx) => (e) => {
+    e.preventDefault();
+    if (!dragData.current) return;
+    const { fromDay, blockIdx } = dragData.current;
+    if (fromDay === toDayIdx) return;
+
+    setPlanBlocks(prev => {
+      const updated = prev.map(d => [...d]);
+      const [moved] = updated[fromDay].splice(blockIdx, 1);
+      moved.day_of_week = toDayIdx;
+      updated[toDayIdx] = [...updated[toDayIdx], moved];
+      return updated;
     });
-    setSaving(false);
-    setShowForm(false);
-    setEditingId(null);
-    loadLog();
+    dragData.current = null;
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this entry?')) return;
-    await fetch(`/api/exercise/${id}`, { method: 'DELETE' });
-    loadLog();
+  const handleDragEnd = () => {
+    dragData.current = null;
   };
 
-  const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
+  // ─── Plan totals ───────────────────────────────────────────────────────
 
-  const handleLocationSaved = (loc) => {
-    setLocation(loc);
-    setShowLocationSetup(false);
+  const allBlocks = planBlocks.flat();
+  const planTotals = { cardio: 0, strength: 0, flexibility: 0 };
+  allBlocks.forEach(b => {
+    if (planTotals[b.category] !== undefined) planTotals[b.category] += b.duration_minutes;
+  });
+  const totalMinutes = allBlocks.reduce((s, b) => s + b.duration_minutes, 0);
+
+  // ─── Save / Edit plan ──────────────────────────────────────────────────
+
+  const openSaveForm = () => {
+    if (!editingPlanId) {
+      setPlanName('');
+      setPlanDescription('');
+    }
+    setShowSaveForm(true);
   };
 
-  // Group log by date
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-  const todayEntries = log.filter(e => e.log_date === today);
-  const recentEntries = log.filter(e => e.log_date !== today).slice(0, 10);
+  const handleSavePlan = async () => {
+    if (!planName.trim()) return;
+    setSavingPlan(true);
 
-  if (location === undefined) {
+    const blocks = planBlocks.flatMap((dayBlocks, dayIdx) =>
+      dayBlocks.map((b, sortIdx) => ({
+        day_of_week: dayIdx,
+        activity_type: b.activity_type,
+        category: b.category,
+        duration_minutes: b.duration_minutes,
+        sort_order: sortIdx,
+      }))
+    );
+
+    const payload = { name: planName.trim(), description: planDescription.trim() || null, blocks };
+
+    if (editingPlanId) {
+      await fetch(`/api/exercise/plans/${editingPlanId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch('/api/exercise/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    setSavingPlan(false);
+    setShowSaveForm(false);
+    loadPlans();
+  };
+
+  const handleDeletePlan = async (id) => {
+    if (!confirm('Delete this workout plan?')) return;
+    await fetch(`/api/exercise/plans/${id}`, { method: 'DELETE' });
+    loadPlans();
+  };
+
+  const handleEditPlan = (plan) => {
+    const blocks = DAYS.map(() => []);
+    (plan.blocks || []).forEach(b => {
+      blocks[b.day_of_week] = [...(blocks[b.day_of_week] || []), {
+        ...b,
+        _key: Date.now() + Math.random(),
+      }];
+    });
+    setPlanBlocks(blocks);
+    setPlanName(plan.name);
+    setPlanDescription(plan.description || '');
+    setEditingPlanId(plan.id);
+    setActiveView('plan');
+  };
+
+  const clearPlan = () => {
+    setPlanBlocks(DAYS.map(() => []));
+    setPlanName('');
+    setPlanDescription('');
+    setEditingPlanId(null);
+  };
+
+  const navigate = useNavigate();
+
+  // ─── Render ─────────────────────────────────────────────────────────────
+
+  if (exerciseGoals === null) {
     return (
       <div className="flex justify-center py-12">
         <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -295,250 +356,332 @@ export default function Exercise() {
     );
   }
 
-  if (showLocationSetup || location === null) {
+  if (!hasGoal) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Exercise</h1>
-            <p className="text-sm text-gray-500 mt-1">Track workouts with real-time weather guidance</p>
-          </div>
-          {location !== null && (
-            <button className="btn-secondary" onClick={() => setShowLocationSetup(false)}>Cancel</button>
-          )}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Workout Planner</h1>
+          <p className="text-sm text-gray-500 mt-1">Plan your weekly workouts with drag-and-drop scheduling</p>
         </div>
-        <LocationSetup onSave={handleLocationSaved} />
+        <GoalRequirementBanner onGoToGoals={() => navigate('/goals')} />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Exercise</h1>
-          <p className="text-sm text-gray-500 mt-1">Track workouts with real-time weather guidance</p>
+          <h1 className="text-2xl font-bold text-gray-900">Workout Planner</h1>
+          <p className="text-sm text-gray-500 mt-1">Drag and drop to build your weekly schedule</p>
         </div>
-        <button className="btn-primary" onClick={() => openAdd('')}>
-          <Plus size={16} /> Log Workout
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: weather + suggestions */}
-        <div className="lg:col-span-2 space-y-4">
-          {weatherLoading ? (
-            <div className="rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 h-64 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : weatherError ? (
-            <div className="card p-6 text-center">
-              <p className="text-red-500 text-sm">{weatherError}</p>
-              <button className="btn-secondary mt-3" onClick={() => setShowLocationSetup(true)}>Change location</button>
-            </div>
-          ) : weather ? (
-            <WeatherWidget weather={weather} onChangeLocation={() => setShowLocationSetup(true)} />
-          ) : null}
-
-          {/* Clickable activity suggestions */}
-          {weather && (
-            <div className="card p-5">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Log one of today's suggested activities</p>
-              <div className="flex flex-wrap gap-2">
-                {weather.suggestions.suggestions.slice(0, 6).map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => openAdd(s.name)}
-                    className="flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-blue-100 hover:text-blue-700 px-3 py-1.5 rounded-full transition-colors font-medium"
-                  >
-                    <span>{s.icon}</span> {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: weekly stats */}
-        <div className="space-y-4">
-          {stats && (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Streak', value: stats.streak, unit: 'days', icon: Flame, color: 'text-orange-500' },
-                  { label: 'Sessions', value: stats.totalSessions, unit: 'this week', icon: Dumbbell, color: 'text-blue-500' },
-                  { label: 'Minutes', value: stats.totalMinutes, unit: 'this week', icon: Clock, color: 'text-green-500' },
-                ].map(({ label, value, unit, icon: Icon, color }) => (
-                  <div key={label} className="card p-3 text-center">
-                    <Icon size={18} className={`mx-auto mb-1 ${color}`} />
-                    <p className="text-2xl font-bold text-gray-900">{value}</p>
-                    <p className="text-xs text-gray-400 leading-tight">{label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* 7-day bar chart */}
-              <div className="card p-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Last 7 Days</p>
-                <div className="flex items-end gap-1.5 h-16">
-                  {Array.from({ length: 7 }, (_, i) => {
-                    const d = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
-                    const dayData = stats.days.find(r => r.log_date === d);
-                    const mins = dayData?.minutes || 0;
-                    const maxMins = Math.max(...stats.days.map(r => r.minutes || 0), 60);
-                    const pct = maxMins > 0 ? (mins / maxMins) * 100 : 0;
-                    const isToday = d === today;
-                    return (
-                      <div key={d} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full flex items-end" style={{ height: '52px' }}>
-                          <div
-                            className={`w-full rounded-t-sm transition-all ${mins > 0 ? (isToday ? 'bg-blue-500' : 'bg-blue-300') : 'bg-gray-100'}`}
-                            style={{ height: `${Math.max(pct, mins > 0 ? 15 : 0)}%` }}
-                            title={mins > 0 ? `${mins} min` : 'Rest day'}
-                          />
-                        </div>
-                        <span className={`text-xs ${isToday ? 'font-bold text-blue-600' : 'text-gray-400'}`}>
-                          {format(subDays(new Date(), 6 - i), 'EEE')[0]}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Today's workouts */}
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
-          <h2 className="font-semibold text-gray-900 text-sm">Today's Workouts</h2>
-          <button onClick={() => openAdd('')} className="btn-ghost text-xs gap-1 py-1">
-            <Plus size={13} /> Add
-          </button>
-        </div>
-        {todayEntries.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-400 text-sm">No workouts logged today</p>
-            <button className="btn-primary mt-3 text-sm" onClick={() => openAdd('')}>Log a workout</button>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {todayEntries.map(e => <ExerciseRow key={e.id} entry={e} onEdit={openEdit} onDelete={handleDelete} />)}
+        {activeView === 'plan' && allBlocks.length > 0 && (
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={clearPlan}>Clear</button>
+            <button className="btn-primary" onClick={openSaveForm}>
+              <Save size={16} /> {editingPlanId ? 'Update' : 'Save'} Plan
+            </button>
           </div>
         )}
       </div>
 
-      {/* Recent history */}
-      {recentEntries.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-5 py-3 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-900 text-sm">Recent History</h2>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {recentEntries.map(e => <ExerciseRow key={e.id} entry={e} onEdit={openEdit} onDelete={handleDelete} showDate />)}
-          </div>
-        </div>
-      )}
+      {/* View toggle */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveView('plan')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+            activeView === 'plan' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Plus size={14} /> Build a Week
+        </button>
+        <button
+          onClick={() => setActiveView('saved')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
+            activeView === 'saved' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <BookOpen size={14} /> Saved Plans
+          {savedPlans.length > 0 && <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">{savedPlans.length}</span>}
+        </button>
+      </div>
 
-      {/* Log workout modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-semibold">{editingId ? 'Edit Workout' : 'Log Workout'}</h2>
-              <button onClick={() => { setShowForm(false); setEditingId(null); }} className="btn-ghost p-1.5"><X size={18} /></button>
+      {/* ════════════ PLAN VIEW ════════════ */}
+      {activeView === 'plan' && (
+        <>
+          {/* Goal progress bars */}
+          <GoalSummaryBar goals={exerciseGoals} planTotals={planTotals} />
+
+          {/* Editing indicator */}
+          {editingPlanId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
+              <p className="text-sm text-blue-700">Editing: <strong>{planName}</strong></p>
+              <button className="btn-secondary text-sm py-1.5" onClick={clearPlan}>Start Fresh</button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="label">Activity *</label>
-                <input className="input" list="activity-list" value={form.activity_type} onChange={set('activity_type')} required placeholder="Running, Cycling, Gym..." />
-                <datalist id="activity-list">
-                  {ACTIVITY_TYPES.map(a => <option key={a} value={a} />)}
-                </datalist>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Date *</label>
-                  <input type="date" className="input" value={form.log_date} onChange={set('log_date')} required />
-                </div>
-                <div>
-                  <label className="label">Duration (min)</label>
-                  <input type="number" min="1" className="input" value={form.duration_minutes} onChange={set('duration_minutes')} placeholder="45" />
-                </div>
-              </div>
-              <div>
-                <label className="label">Intensity</label>
-                <div className="flex gap-2">
-                  {['light', 'moderate', 'vigorous'].map(lvl => (
+          )}
+
+          {/* Total summary */}
+          {allBlocks.length > 0 && (
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span className="font-semibold">{totalMinutes} min total</span>
+              <span>|</span>
+              <span className="text-blue-600">Cardio: {planTotals.cardio} min</span>
+              <span className="text-orange-600">Strength: {planTotals.strength} min</span>
+              <span className="text-green-600">Flexibility: {planTotals.flexibility} min</span>
+            </div>
+          )}
+
+          {/* Weekly grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+            {DAYS.map((day, dayIdx) => {
+              const dayBlocks = planBlocks[dayIdx] || [];
+              const dayMinutes = dayBlocks.reduce((s, b) => s + b.duration_minutes, 0);
+
+              return (
+                <div
+                  key={day}
+                  className="card border border-gray-200 min-h-[200px] flex flex-col"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop(dayIdx)}
+                >
+                  {/* Day header */}
+                  <div className="px-3 py-2 border-b bg-gray-50 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">{DAYS_SHORT[dayIdx]}</span>
+                    {dayMinutes > 0 && (
+                      <span className="text-xs text-gray-400">{dayMinutes}m</span>
+                    )}
+                  </div>
+
+                  {/* Blocks */}
+                  <div className="p-2 flex-1 space-y-1.5">
+                    {dayBlocks.map((block, blockIdx) => (
+                      <WorkoutBlock
+                        key={block._key || blockIdx}
+                        block={block}
+                        draggable
+                        onDragStart={handleDragStart(dayIdx, blockIdx)}
+                        onDragEnd={handleDragEnd}
+                        onRemove={() => removeBlock(dayIdx, blockIdx)}
+                        onUpdateDuration={(d) => updateBlockDuration(dayIdx, blockIdx, d)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Add button */}
+                  <div className="p-2 pt-0">
                     <button
-                      key={lvl} type="button"
-                      onClick={() => setForm(f => ({ ...f, intensity: lvl }))}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-medium capitalize transition-colors ${form.intensity === lvl ? INTENSITY_COLORS[lvl] + ' border-transparent' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}
-                    >{lvl}</button>
-                  ))}
+                      onClick={() => { setPickerDay(dayIdx); setShowPicker(true); }}
+                      className="w-full py-1.5 border-2 border-dashed border-gray-200 rounded-lg text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="label">Distance</label>
-                  <input type="number" min="0" step="0.01" className="input" value={form.distance} onChange={set('distance')} placeholder="3.1" />
+              );
+            })}
+          </div>
+
+          {/* Quick-add templates */}
+          <div className="card p-5">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Quick Add — drag onto a day or click to add</p>
+            <div className="space-y-3">
+              {CATEGORIES.map(cat => (
+                <div key={cat.key}>
+                  <p className={`text-xs font-semibold ${cat.lightText} uppercase tracking-wide mb-1.5`}>{cat.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ACTIVITY_TEMPLATES[cat.key].map(template => (
+                      <button
+                        key={template.name}
+                        onClick={() => {
+                          // Add to first day with fewest blocks as a sensible default, or show picker
+                          setPickerDay(0);
+                          addBlock(0, template.name, cat.key, template.defaultMin);
+                        }}
+                        className={`text-sm ${cat.lightBg} ${cat.lightText} hover:opacity-80 px-3 py-1.5 rounded-full transition-colors font-medium border ${cat.border}`}
+                      >
+                        {template.icon} {template.name} ({template.defaultMin}m)
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Unit</label>
-                  <select className="input" value={form.distance_unit} onChange={set('distance_unit')}>
-                    <option value="miles">miles</option>
-                    <option value="km">km</option>
-                    <option value="yards">yards</option>
-                    <option value="meters">meters</option>
-                  </select>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ════════════ SAVED VIEW ════════════ */}
+      {activeView === 'saved' && (
+        <div className="space-y-4">
+          {savedLoading ? (
+            <div className="flex justify-center py-12"><div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+          ) : savedPlans.length === 0 ? (
+            <div className="card text-center py-16">
+              <BookOpen size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-400 text-sm">No saved workout plans yet</p>
+              <p className="text-xs text-gray-400 mt-1">Build a weekly schedule and save it to see it here</p>
+              <button className="btn-primary mt-4" onClick={() => setActiveView('plan')}>Build a plan</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {savedPlans.map(plan => (
+                <div key={plan.id} className="card border border-gray-200 hover:border-blue-200 transition-colors">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900">{plan.name}</h3>
+                        {plan.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{plan.description}</p>}
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                          <span className="font-medium">{plan.totalMinutes} min/week</span>
+                          <span className="text-blue-600">Cardio: {plan.totalsByCategory?.cardio || 0}m</span>
+                          <span className="text-orange-600">Strength: {plan.totalsByCategory?.strength || 0}m</span>
+                          <span className="text-green-600">Flex: {plan.totalsByCategory?.flexibility || 0}m</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{plan.blocks?.length || 0} workout blocks</p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setViewingPlan(plan)} className="btn-ghost p-1.5 text-blue-500" title="View"><Eye size={14} /></button>
+                        <button onClick={() => handleEditPlan(plan)} className="btn-ghost p-1.5" title="Edit"><Pencil size={14} /></button>
+                        <button onClick={() => handleDeletePlan(plan.id)} className="btn-ghost p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50" title="Delete"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ════════════ ACTIVITY PICKER MODAL ════════════ */}
+      {showPicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-semibold">Add to {DAYS[pickerDay]}</h2>
+              <button onClick={() => setShowPicker(false)} className="btn-ghost p-1.5"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Category tabs */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setPickerCategory(cat.key)}
+                    className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                      pickerCategory === cat.key ? 'bg-white shadow text-gray-900' : 'text-gray-500'
+                    }`}
+                  >{cat.label}</button>
+                ))}
               </div>
-              <div>
-                <label className="label">Est. Calories Burned</label>
-                <input type="number" min="0" className="input" value={form.calories_burned} onChange={set('calories_burned')} placeholder="300" />
+
+              {/* Activity buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                {ACTIVITY_TEMPLATES[pickerCategory].map(template => {
+                  const cat = getCategoryConfig(pickerCategory);
+                  return (
+                    <button
+                      key={template.name}
+                      onClick={() => {
+                        addBlock(pickerDay, template.name, pickerCategory, template.defaultMin);
+                        setShowPicker(false);
+                      }}
+                      className={`text-left p-3 rounded-xl border ${cat.border} ${cat.lightBg} hover:opacity-80 transition-colors`}
+                    >
+                      <p className={`text-sm font-medium ${cat.lightText}`}>{template.icon} {template.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{template.defaultMin} min</p>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="label">Notes</label>
-                <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="How did it feel? Any PRs?" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="btn-primary flex-1" disabled={saving}>
-                  {saving ? 'Saving...' : editingId ? 'Update' : 'Log Workout'}
-                </button>
-                <button type="button" className="btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function ExerciseRow({ entry, onEdit, onDelete, showDate }) {
-  return (
-    <div className="px-5 py-3 flex items-center gap-4">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-medium text-gray-900">{entry.activity_type}</p>
-          <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${INTENSITY_COLORS[entry.intensity] || INTENSITY_COLORS.moderate}`}>
-            {entry.intensity}
-          </span>
-          {showDate && <span className="text-xs text-gray-400">{format(parseISO(entry.log_date), 'MMM d')}</span>}
+      {/* ════════════ SAVE PLAN MODAL ════════════ */}
+      {showSaveForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-semibold">{editingPlanId ? 'Update Plan' : 'Save Weekly Plan'}</h2>
+              <button onClick={() => setShowSaveForm(false)} className="btn-ghost p-1.5"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="label">Plan Name *</label>
+                <input className="input" value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Summer Training, Off-Season Recovery" />
+              </div>
+              <div>
+                <label className="label">Description</label>
+                <textarea className="input" rows={2} value={planDescription} onChange={e => setPlanDescription(e.target.value)} placeholder="Quick notes about this plan..." />
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+                {allBlocks.length} blocks &middot; {totalMinutes} min/week &middot;
+                Cardio: {planTotals.cardio}m &middot; Strength: {planTotals.strength}m &middot; Flex: {planTotals.flexibility}m
+              </div>
+              <div className="flex gap-3">
+                <button className="btn-primary flex-1" onClick={handleSavePlan} disabled={savingPlan || !planName.trim()}>
+                  {savingPlan ? 'Saving...' : editingPlanId ? 'Update Plan' : 'Save Plan'}
+                </button>
+                <button className="btn-secondary" onClick={() => setShowSaveForm(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-          {entry.duration_minutes && <span><Clock size={11} className="inline mr-1" />{entry.duration_minutes} min</span>}
-          {entry.distance && <span>{entry.distance} {entry.distance_unit}</span>}
-          {entry.calories_burned && <span><Flame size={11} className="inline mr-1" />{entry.calories_burned} cal</span>}
-          {entry.notes && <span className="truncate max-w-xs italic">{entry.notes}</span>}
+      )}
+
+      {/* ════════════ VIEW PLAN DETAIL MODAL ════════════ */}
+      {viewingPlan && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-lg font-semibold">{viewingPlan.name}</h2>
+                {viewingPlan.description && <p className="text-sm text-gray-500 mt-0.5">{viewingPlan.description}</p>}
+              </div>
+              <button onClick={() => setViewingPlan(null)} className="btn-ghost p-1.5"><X size={18} /></button>
+            </div>
+            <div className="p-6">
+              {/* Summary */}
+              <div className="flex gap-4 text-sm text-gray-600 mb-4">
+                <span className="font-semibold">{viewingPlan.totalMinutes} min/week</span>
+                <span className="text-blue-600">Cardio: {viewingPlan.totalsByCategory?.cardio || 0}m</span>
+                <span className="text-orange-600">Strength: {viewingPlan.totalsByCategory?.strength || 0}m</span>
+                <span className="text-green-600">Flex: {viewingPlan.totalsByCategory?.flexibility || 0}m</span>
+              </div>
+
+              {/* Weekly view */}
+              <div className="grid grid-cols-7 gap-2">
+                {DAYS.map((day, dayIdx) => {
+                  const dayBlocks = (viewingPlan.blocks || []).filter(b => b.day_of_week === dayIdx);
+                  return (
+                    <div key={day} className="border border-gray-200 rounded-lg min-h-[120px]">
+                      <div className="px-2 py-1.5 border-b bg-gray-50">
+                        <span className="text-xs font-semibold text-gray-600">{DAYS_SHORT[dayIdx]}</span>
+                      </div>
+                      <div className="p-1.5 space-y-1">
+                        {dayBlocks.length === 0 ? (
+                          <p className="text-xs text-gray-300 text-center py-2">Rest</p>
+                        ) : dayBlocks.map((block, i) => {
+                          const cat = getCategoryConfig(block.category);
+                          return (
+                            <div key={i} className={`rounded px-2 py-1 ${cat.lightBg} ${cat.border} border`}>
+                              <p className={`text-xs font-medium ${cat.lightText} truncate`}>{block.activity_type}</p>
+                              <p className="text-xs text-gray-400">{block.duration_minutes}m</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button onClick={() => onEdit(entry)} className="btn-ghost p-1.5"><Pencil size={13} /></button>
-        <button onClick={() => onDelete(entry.id)} className="btn-ghost p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={13} /></button>
-      </div>
+      )}
     </div>
   );
 }
