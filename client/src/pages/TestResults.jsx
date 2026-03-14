@@ -69,8 +69,8 @@ export default function TestResults() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lab Results</h1>
-          <p className="text-sm text-gray-500 mt-1">Track your medical test results over time</p>
+          <h1 className="text-2xl font-bold text-stone-900">Lab Results</h1>
+          <p className="text-sm text-stone-500 mt-1">Track your medical test results over time</p>
         </div>
         <button className="btn-primary" onClick={openAdd}>
           <Plus size={16} /> Add Result
@@ -80,7 +80,7 @@ export default function TestResults() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
             type="text" placeholder="Search tests..." value={search}
             onChange={e => setSearch(e.target.value)}
@@ -101,40 +101,40 @@ export default function TestResults() {
       <div className="card overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : results.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-400 text-sm">No results found</p>
+            <p className="text-stone-400 text-sm">No results found</p>
             <button className="btn-primary mt-4" onClick={openAdd}>Add your first result</button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-stone-50 border-b border-stone-200">
                 <tr>
                   {['Test Name', 'Value', 'Reference Range', 'Status', 'Date', 'Lab', 'Category', ''].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-stone-600 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-stone-100">
                 {results.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                  <tr key={r.id} className="hover:bg-stone-50">
+                    <td className="px-4 py-3 font-medium text-stone-900">
                       {r.test_name}
-                      {r.notes && <p className="text-xs text-gray-400 font-normal mt-0.5 max-w-xs truncate">{r.notes}</p>}
+                      {r.notes && <p className="text-xs text-stone-400 font-normal mt-0.5 max-w-xs truncate">{r.notes}</p>}
                     </td>
                     <td className="px-4 py-3 font-semibold">{r.value} {r.unit}</td>
-                    <td className="px-4 py-3 text-gray-500">{r.reference_range || '—'}</td>
+                    <td className="px-4 py-3 text-stone-500">{r.reference_range || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`badge-${r.status}`}>{r.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                    <td className="px-4 py-3 text-stone-500 whitespace-nowrap">
                       {format(parseISO(r.test_date), 'MMM d, yyyy')}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{r.lab_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{r.category || '—'}</td>
+                    <td className="px-4 py-3 text-stone-500">{r.lab_name || '—'}</td>
+                    <td className="px-4 py-3 text-stone-500">{r.category || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEdit(r)} className="btn-ghost p-1.5"><Pencil size={14} /></button>

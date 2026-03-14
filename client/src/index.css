@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-stone-50 text-stone-900 antialiased;
   }
 }
 
@@ -13,25 +13,25 @@
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+    @apply btn bg-amber-700 text-white hover:bg-amber-800 focus:ring-amber-500;
   }
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500;
+    @apply btn bg-white text-stone-700 border border-stone-300 hover:bg-stone-50 focus:ring-amber-500;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-700 text-white hover:bg-red-800 focus:ring-red-500;
   }
   .btn-ghost {
-    @apply btn text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300;
+    @apply btn text-stone-600 hover:bg-stone-100 hover:text-stone-900 focus:ring-stone-300;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    @apply bg-white rounded-xl shadow-sm border border-stone-200;
   }
   .input {
-    @apply block w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500;
+    @apply block w-full rounded-lg border-stone-300 shadow-sm text-sm focus:border-amber-500 focus:ring-amber-500;
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-stone-700 mb-1;
   }
   .badge-normal {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800;
@@ -43,6 +43,6 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800;
   }
   .badge-unknown {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600;
   }
 }

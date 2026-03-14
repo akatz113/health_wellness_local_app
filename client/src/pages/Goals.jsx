@@ -34,29 +34,19 @@ const STATUS_CONFIG = {
   on_track:  { icon: CheckCircle2, bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  badge: 'bg-green-100 text-green-700',  label: 'On Track'  },
   due_soon:  { icon: Clock,        bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-700', label: 'Due Soon'  },
   off_track: { icon: AlertCircle,  bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    badge: 'bg-red-100 text-red-700',    label: 'Off Track' },
-  no_data:   { icon: HelpCircle,   bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-500',   badge: 'bg-gray-100 text-gray-500',   label: 'No Data'   },
-  manual:    { icon: CheckCircle2, bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-600',   badge: 'bg-blue-100 text-blue-600',   label: 'Manual'    },
+  no_data:   { icon: HelpCircle,   bg: 'bg-stone-50',   border: 'border-stone-200',   text: 'text-stone-500',   badge: 'bg-stone-100 text-stone-500',   label: 'No Data'   },
+  manual:    { icon: CheckCircle2, bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   badge: 'bg-amber-100 text-amber-700',   label: 'Manual'    },
   error:     { icon: AlertCircle,  bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    badge: 'bg-red-100 text-red-700',    label: 'Error'     },
 };
 
 const CATEGORY_LABELS = {
   nutrition:   { label: 'Nutrition',   color: 'bg-green-100 text-green-700'   },
-  appointment: { label: 'Appointment', color: 'bg-blue-100 text-blue-700'     },
+  appointment: { label: 'Appointment', color: 'bg-amber-100 text-amber-800'     },
   test:        { label: 'Lab Test',    color: 'bg-purple-100 text-purple-700' },
   exercise:    { label: 'Exercise',    color: 'bg-orange-100 text-orange-700' },
-  general:     { label: 'General',     color: 'bg-gray-100 text-gray-600'     },
+  general:     { label: 'General',     color: 'bg-stone-100 text-stone-600'     },
 };
 
-const EXERCISE_METRICS = [
-  { key: 'sessions', label: 'Workout Sessions', unit: 'sessions', desc: 'Count how many times you work out' },
-  { key: 'minutes',  label: 'Active Minutes',   unit: 'min',      desc: 'Total exercise duration'          },
-  { key: 'streak',   label: 'Consecutive Days', unit: 'days',     desc: 'Keep a daily exercise streak'     },
-];
-
-const ACTIVITY_SUGGESTIONS = [
-  'Running', 'Walking', 'Cycling', 'Swimming', 'Hiking',
-  'Gym / Weight Training', 'Home HIIT', 'Yoga / Pilates',
-];
 
 const emptyForm = {
   title: '', category: 'test', metric_key: '', target_value: '', target_unit: '', period: 'yearly', notes: '',
@@ -69,7 +59,13 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
   const Icon = cfg.icon;
   const cat = CATEGORY_LABELS[goal.category];
 
-  const showProgress = (goal.category === 'nutrition' || goal.category === 'exercise')
+  const isSimpleExercise = goal.category === 'exercise' && (!goal.metric_key || goal.metric_key.startsWith('['));
+  let exerciseTags = [];
+  if (isSimpleExercise && goal.metric_key) {
+    try { exerciseTags = JSON.parse(goal.metric_key); } catch {}
+  }
+
+  const showProgress = (goal.category === 'nutrition' || (goal.category === 'exercise' && !isSimpleExercise))
     && goal.current_value !== null && goal.target_value;
   const progressPct = showProgress ? Math.min((goal.current_value / goal.target_value) * 100, 100) : 0;
 
@@ -83,15 +79,15 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div>
-                <h3 className="font-semibold text-gray-900">{goal.title}</h3>
+                <h3 className="font-semibold text-stone-900">{goal.title}</h3>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat?.color}`}>{cat?.label}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>{cfg.label}</span>
-                  <span className="text-xs text-gray-400 capitalize">{goal.period}</span>
+                  {!isSimpleExercise && <span className="text-xs text-stone-400 capitalize">{goal.period}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => onToggle(goal)} className={`btn-ghost p-1.5 ${goal.active ? 'text-green-500' : 'text-gray-400'}`} title={goal.active ? 'Disable goal' : 'Enable goal'}>
+                <button onClick={() => onToggle(goal)} className={`btn-ghost p-1.5 ${goal.active ? 'text-green-500' : 'text-stone-400'}`} title={goal.active ? 'Disable goal' : 'Enable goal'}>
                   {goal.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                 </button>
                 <button onClick={() => onEdit(goal)} className="btn-ghost p-1.5"><Pencil size={14} /></button>
@@ -101,15 +97,23 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
 
             <p className={`text-sm mt-2 ${cfg.text}`}>{goal.message}</p>
 
+            {isSimpleExercise && exerciseTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {exerciseTags.map((tag, i) => (
+                  <span key={i} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">{tag}</span>
+                ))}
+              </div>
+            )}
+
             {showProgress && (
               <div className="mt-3 space-y-1">
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-stone-500">
                   <span>{goal.current_value?.toFixed(1)} {goal.target_unit}</span>
                   <span>Goal: {goal.target_value} {goal.target_unit}</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${progressPct >= 100 ? 'bg-green-500' : progressPct >= 66 ? 'bg-blue-500' : 'bg-orange-400'}`}
+                    className={`h-full rounded-full transition-all ${progressPct >= 100 ? 'bg-green-500' : progressPct >= 66 ? 'bg-amber-600' : 'bg-orange-400'}`}
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -117,10 +121,10 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
             )}
 
             {goal.next_due && (
-              <p className="text-xs text-gray-400 mt-2">Next due: {goal.next_due}</p>
+              <p className="text-xs text-stone-400 mt-2">Next due: {goal.next_due}</p>
             )}
             {goal.notes && (
-              <p className="text-xs text-gray-400 mt-1 italic">{goal.notes}</p>
+              <p className="text-xs text-stone-400 mt-1 italic">{goal.notes}</p>
             )}
           </div>
         </div>
@@ -167,14 +171,14 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-gray-900">{challenge.title}</h3>
+                <h3 className="font-semibold text-stone-900">{challenge.title}</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700">Challenge</span>
                 {allDone && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">All Done Today</span>}
               </div>
               {challenge.description && (
-                <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
+                <p className="text-sm text-stone-500 mt-1">{challenge.description}</p>
               )}
-              <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+              <div className="flex items-center gap-3 mt-1 text-xs text-stone-400">
                 {startDate && <span>Started {startDate}</span>}
                 {endDate && <span>Ends {endDate}</span>}
                 {daysSinceStart !== null && <span>Day {daysSinceStart}{totalDays ? ` of ${totalDays}` : ''}</span>}
@@ -182,7 +186,7 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => onToggle(challenge)} className={`btn-ghost p-1.5 ${challenge.active ? 'text-green-500' : 'text-gray-400'}`} title={challenge.active ? 'Disable' : 'Enable'}>
+            <button onClick={() => onToggle(challenge)} className={`btn-ghost p-1.5 ${challenge.active ? 'text-green-500' : 'text-stone-400'}`} title={challenge.active ? 'Disable' : 'Enable'}>
               {challenge.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
             </button>
             <button onClick={() => onEdit(challenge)} className="btn-ghost p-1.5"><Pencil size={14} /></button>
@@ -195,11 +199,11 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
 
         {/* Today's progress bar */}
         <div className="mt-3 space-y-1">
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-stone-500">
             <span>Today&apos;s progress</span>
             <span>{completedCount} / {totalCount}</span>
           </div>
-          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${allDone ? 'bg-green-500' : progressPct >= 50 ? 'bg-indigo-500' : 'bg-indigo-300'}`}
               style={{ width: `${progressPct}%` }}
@@ -217,18 +221,18 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                   item.completed
                     ? 'bg-green-50 hover:bg-green-100'
-                    : 'bg-gray-50 hover:bg-gray-100'
+                    : 'bg-stone-50 hover:bg-stone-100'
                 }`}
               >
                 {item.completed
                   ? <CheckSquare size={18} className="text-green-600 flex-shrink-0" />
-                  : <Square size={18} className="text-gray-400 flex-shrink-0" />
+                  : <Square size={18} className="text-stone-400 flex-shrink-0" />
                 }
-                <span className={`text-sm flex-1 ${item.completed ? 'text-green-700 line-through' : 'text-gray-700'}`}>
+                <span className={`text-sm flex-1 ${item.completed ? 'text-green-700 line-through' : 'text-stone-700'}`}>
                   {item.title}
                 </span>
                 {item.target_value && (
-                  <span className="text-xs text-gray-400">{item.target_value} {item.target_unit || ''} / {item.period}</span>
+                  <span className="text-xs text-stone-400">{item.target_value} {item.target_unit || ''} / {item.period}</span>
                 )}
               </button>
             ))}
@@ -248,22 +252,22 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
             <div className="flex gap-0.5 min-w-0">
               {history.map(day => {
                 const pct = day.totalCount > 0 ? day.completedCount / day.totalCount : 0;
-                const bg = pct === 0 ? 'bg-gray-200' : pct < 1 ? 'bg-indigo-300' : 'bg-green-500';
+                const bg = pct === 0 ? 'bg-stone-200' : pct < 1 ? 'bg-indigo-300' : 'bg-green-500';
                 const dateLabel = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 return (
                   <div key={day.date} className="group relative flex flex-col items-center">
                     <div className={`w-4 h-4 rounded-sm ${bg}`} />
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-stone-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                       {dateLabel}: {day.completedCount}/{day.totalCount}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-stone-400 mt-1">
               <span>{history.length} days</span>
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-gray-200 inline-block" /> None</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-stone-200 inline-block" /> None</span>
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-300 inline-block" /> Partial</span>
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" /> All</span>
               </div>
@@ -355,7 +359,7 @@ function ChallengeFormModal({ initial, onSave, onClose }) {
           {/* Challenge Items */}
           <div>
             <label className="label">Daily Tasks / Rules *</label>
-            <p className="text-xs text-gray-400 mb-2">Add each task or rule you need to check off each day</p>
+            <p className="text-xs text-stone-400 mb-2">Add each task or rule you need to check off each day</p>
             <div className="space-y-2">
               {form.items.map((item, idx) => (
                 <div key={idx} className="bg-indigo-50 rounded-xl p-3 border border-indigo-100 space-y-2">
@@ -445,6 +449,8 @@ export default function Goals() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
+  const [exTags, setExTags] = useState([]);
+  const [exTagInput, setExTagInput] = useState('');
 
   // Challenges state
   const [challenges, setChallenges] = useState([]);
@@ -473,8 +479,16 @@ export default function Goals() {
 
   // ─── Goal handlers ──────────────────────────────────────────────────────
 
-  const openAdd = () => { setForm(emptyForm); setEditingId(null); setShowForm(true); };
-  const openEdit = (g) => { setForm({ ...g, target_value: g.target_value ?? '', metric_key: g.metric_key ?? '' }); setEditingId(g.id); setShowForm(true); };
+  const openAdd = () => { setForm(emptyForm); setEditingId(null); setExTags([]); setExTagInput(''); setShowForm(true); };
+  const openEdit = (g) => {
+    setForm({ ...g, target_value: g.target_value ?? '', metric_key: g.metric_key ?? '' });
+    setEditingId(g.id);
+    if (g.category === 'exercise' && g.metric_key && g.metric_key.startsWith('[')) {
+      try { setExTags(JSON.parse(g.metric_key)); } catch { setExTags([]); }
+    } else { setExTags([]); }
+    setExTagInput('');
+    setShowForm(true);
+  };
   const closeForm = () => { setShowForm(false); setEditingId(null); };
 
   const handleSubmit = async (e) => {
@@ -482,7 +496,10 @@ export default function Goals() {
     setSaving(true);
     const payload = {
       ...form,
-      target_value: form.target_value !== '' ? parseFloat(form.target_value) : null,
+      metric_key: form.category === 'exercise' ? JSON.stringify(exTags) : form.metric_key,
+      target_value: form.category === 'exercise' ? null : (form.target_value !== '' ? parseFloat(form.target_value) : null),
+      target_unit: form.category === 'exercise' ? null : form.target_unit,
+      period: form.category === 'exercise' ? 'yearly' : form.period,
     };
     const method = editingId ? 'PUT' : 'POST';
     const url = editingId ? `/api/goals/${editingId}` : '/api/goals';
@@ -577,8 +594,8 @@ export default function Goals() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Health Goals</h1>
-          <p className="text-sm text-gray-500 mt-1">Track nutrition, exercise, appointments, and lab schedules</p>
+          <h1 className="text-2xl font-bold text-stone-900">Health Goals</h1>
+          <p className="text-sm text-stone-500 mt-1">Track nutrition, exercise, appointments, and lab schedules</p>
         </div>
         {activeTab === 'goals' ? (
           <button className="btn-primary" onClick={openAdd}><Plus size={16} /> Add Goal</button>
@@ -590,20 +607,20 @@ export default function Goals() {
       </div>
 
       {/* Goals / Challenges tab toggle */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-stone-100 p-1 rounded-lg w-fit">
         <button
           onClick={() => setActiveTab('goals')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
-            activeTab === 'goals' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            activeTab === 'goals' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           Goals
-          {goals.length > 0 && <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">{goals.length}</span>}
+          {goals.length > 0 && <span className="text-xs bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded-full">{goals.length}</span>}
         </button>
         <button
           onClick={() => setActiveTab('challenges')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
-            activeTab === 'challenges' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            activeTab === 'challenges' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           <Trophy size={14} /> Challenges
@@ -621,7 +638,7 @@ export default function Goals() {
                 { label: 'Off Track', count: counts.off_track, bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
                 { label: 'Due Soon', count: counts.due_soon,  bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
                 { label: 'On Track', count: counts.on_track,  bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-                { label: 'No Data',  count: counts.no_data,   bg: 'bg-gray-50',  text: 'text-gray-600', border: 'border-gray-200' },
+                { label: 'No Data',  count: counts.no_data,   bg: 'bg-stone-50',  text: 'text-stone-600', border: 'border-stone-200' },
               ].map(({ label, count, bg, text, border }) => (
                 <div key={label} className={`rounded-xl border p-4 text-center ${bg} ${border}`}>
                   <p className={`text-2xl font-bold ${text}`}>{count}</p>
@@ -632,24 +649,24 @@ export default function Goals() {
           )}
 
           {/* Filter tabs */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit flex-wrap">
+          <div className="flex gap-1 bg-stone-100 p-1 rounded-lg w-fit flex-wrap">
             {[['', 'All'], ['exercise', 'Exercise'], ['nutrition', 'Nutrition'], ['appointment', 'Appointments'], ['test', 'Lab Tests'], ['general', 'General']].map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => setFilterCategory(val)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterCategory === val ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filterCategory === val ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'}`}
               >{label}</button>
             ))}
           </div>
 
           {/* Goals list */}
           {loading ? (
-            <div className="flex justify-center py-12"><div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex justify-center py-12"><div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : filtered.length === 0 ? (
             <div className="card text-center py-16">
-              <p className="text-gray-400 text-sm">{goals.length === 0 ? 'No goals set up yet' : 'No goals in this category'}</p>
+              <p className="text-stone-400 text-sm">{goals.length === 0 ? 'No goals set up yet' : 'No goals in this category'}</p>
               {goals.length === 0 && (
-                <div className="mt-4 space-y-2 text-xs text-gray-400 max-w-sm mx-auto">
+                <div className="mt-4 space-y-2 text-xs text-stone-400 max-w-sm mx-auto">
                   <p>Examples: &ldquo;3 workouts per week&rdquo;, &ldquo;150g protein daily&rdquo;, &ldquo;HbA1c every 6 months&rdquo;, &ldquo;Annual physical&rdquo;</p>
                 </div>
               )}
@@ -689,15 +706,19 @@ export default function Goals() {
                       ].map(([val, label]) => (
                         <button
                           key={val} type="button"
-                          onClick={() => setForm(f => ({
-                            ...f,
-                            category: val,
-                            metric_key: val === 'exercise' ? 'sessions' : '',
-                            target_value: '',
-                            target_unit: val === 'exercise' ? 'sessions' : '',
-                            period: val === 'exercise' ? 'weekly' : f.period,
-                          }))}
-                          className={`py-2 px-2 rounded-lg border text-sm font-medium transition-colors ${form.category === val ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'}`}
+                          onClick={() => {
+                            setForm(f => ({
+                              ...f,
+                              category: val,
+                              metric_key: '',
+                              target_value: '',
+                              target_unit: '',
+                              period: f.period,
+                            }));
+                            setExTags([]);
+                            setExTagInput('');
+                          }}
+                          className={`py-2 px-1.5 rounded-lg border text-xs font-medium transition-colors text-center leading-tight ${form.category === val ? 'bg-amber-700 text-white border-amber-600' : 'border-stone-300 text-stone-600 hover:border-amber-400'}`}
                         >{label}</button>
                       ))}
                     </div>
@@ -733,14 +754,14 @@ export default function Goals() {
                   )}
 
                   {form.category === 'appointment' && (
-                    <div className="space-y-3 bg-blue-50 rounded-xl p-4 border border-blue-100">
+                    <div className="space-y-3 bg-amber-50 rounded-xl p-4 border border-amber-100">
                       <div>
                         <label className="label">Specialty / Type</label>
                         <input className="input" list="specialty-list" value={form.metric_key} onChange={set('metric_key')} placeholder="e.g. Primary Care, Cardiology" />
                         <datalist id="specialty-list">
                           {SPECIALTY_SUGGESTIONS.map(s => <option key={s} value={s} />)}
                         </datalist>
-                        <p className="text-xs text-gray-400 mt-1">Leave blank to match any appointment</p>
+                        <p className="text-xs text-stone-400 mt-1">Leave blank to match any appointment</p>
                       </div>
                       <div>
                         <label className="label">Frequency</label>
@@ -756,7 +777,7 @@ export default function Goals() {
                       <div>
                         <label className="label">Test Name (partial match)</label>
                         <input className="input" value={form.metric_key} onChange={set('metric_key')} placeholder="e.g. HbA1c, Cholesterol, CBC" required />
-                        <p className="text-xs text-gray-400 mt-1">Matches any test name containing this text</p>
+                        <p className="text-xs text-stone-400 mt-1">Matches any test name containing this text</p>
                       </div>
                       <div>
                         <label className="label">How Often</label>
@@ -767,72 +788,54 @@ export default function Goals() {
                     </div>
                   )}
 
-                  {form.category === 'exercise' && (() => {
-                    const parts = (form.metric_key || 'sessions').split(':');
-                    const exMetric = parts[0] || 'sessions';
-                    const exActivity = parts[1] || '';
-                    const isStreak = exMetric === 'streak';
-
-                    const setExMetric = (m) => {
-                      const unit = m === 'sessions' ? 'sessions' : m === 'minutes' ? 'min' : 'days';
-                      setForm(f => ({ ...f, metric_key: exActivity ? `${m}:${exActivity}` : m, target_unit: unit }));
-                    };
-                    const setExActivity = (a) => {
-                      setForm(f => ({ ...f, metric_key: a ? `${exMetric}:${a}` : exMetric }));
-                    };
-
-                    return (
-                      <div className="space-y-3 bg-orange-50 rounded-xl p-4 border border-orange-100">
-                        <div>
-                          <label className="label">What to Track</label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {EXERCISE_METRICS.map(m => (
-                              <button key={m.key} type="button" onClick={() => setExMetric(m.key)}
-                                className={`py-2 px-3 rounded-lg border text-sm font-medium transition-colors text-left ${exMetric === m.key ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-600 hover:border-orange-400'}`}
-                              >
-                                <p>{m.label}</p>
-                                <p className={`text-xs mt-0.5 ${exMetric === m.key ? 'text-orange-100' : 'text-gray-400'}`}>{m.desc}</p>
-                              </button>
+                  {form.category === 'exercise' && (
+                    <div className="space-y-3 bg-orange-50 rounded-xl p-4 border border-orange-100">
+                      <p className="text-xs text-stone-500">Write your goal in the title above (e.g. &ldquo;Run a 5k by Summer&rdquo;). Add optional tags to categorize it.</p>
+                      <div>
+                        <label className="label">Tags (optional)</label>
+                        {exTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {exTags.map((tag, i) => (
+                              <span key={i} className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                                {tag}
+                                <button type="button" onClick={() => setExTags(t => t.filter((_, j) => j !== i))} className="hover:text-orange-900">
+                                  <X size={11} />
+                                </button>
+                              </span>
                             ))}
                           </div>
-                        </div>
-
-                        {!isStreak && (
-                          <div>
-                            <label className="label">Activity Type (optional)</label>
-                            <input className="input" list="ex-activity-list" value={exActivity}
-                              onChange={e => setExActivity(e.target.value)}
-                              placeholder="Leave blank for any activity" />
-                            <datalist id="ex-activity-list">
-                              {ACTIVITY_SUGGESTIONS.map(a => <option key={a} value={a} />)}
-                            </datalist>
-                            <p className="text-xs text-gray-400 mt-1">e.g. &ldquo;Running&rdquo; — leave blank to count all workouts</p>
-                          </div>
                         )}
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="label">Target {exMetric === 'sessions' ? 'Sessions' : exMetric === 'minutes' ? 'Minutes' : 'Streak (days)'}</label>
-                            <input type="number" min="1" className="input" value={form.target_value}
-                              onChange={set('target_value')} placeholder={exMetric === 'sessions' ? 'e.g. 3' : exMetric === 'minutes' ? 'e.g. 150' : 'e.g. 7'} required />
-                          </div>
-                          {!isStreak && (
-                            <div>
-                              <label className="label">Period</label>
-                              <select className="input" value={form.period} onChange={set('period')}>
-                                {PERIODS.filter(p => !['biannual', 'yearly'].includes(p.value)).map(p =>
-                                  <option key={p.value} value={p.value}>{p.label}</option>
-                                )}
-                              </select>
-                            </div>
-                          )}
+                        <div className="flex gap-2">
+                          <input
+                            className="input flex-1"
+                            value={exTagInput}
+                            onChange={e => setExTagInput(e.target.value)}
+                            onKeyDown={e => {
+                              if ((e.key === 'Enter' || e.key === ',') && exTagInput.trim()) {
+                                e.preventDefault();
+                                const tag = exTagInput.trim().replace(/,$/, '');
+                                if (tag && !exTags.includes(tag)) setExTags(t => [...t, tag]);
+                                setExTagInput('');
+                              }
+                            }}
+                            placeholder="e.g. Zone 2, Lifting — press Enter to add"
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary text-sm px-3"
+                            onClick={() => {
+                              const tag = exTagInput.trim();
+                              if (tag && !exTags.includes(tag)) setExTags(t => [...t, tag]);
+                              setExTagInput('');
+                            }}
+                          >Add</button>
                         </div>
                       </div>
-                    );
-                  })()}
+                    </div>
+                  )}
 
                   {form.category === 'general' && (
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                       <label className="label">Frequency (for reference)</label>
                       <select className="input" value={form.period} onChange={set('period')}>
                         {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -866,8 +869,8 @@ export default function Goals() {
           ) : challenges.length === 0 ? (
             <div className="card text-center py-16">
               <Trophy size={40} className="mx-auto text-indigo-300 mb-3" />
-              <p className="text-gray-400 text-sm">No challenges yet</p>
-              <div className="mt-3 space-y-1 text-xs text-gray-400 max-w-sm mx-auto">
+              <p className="text-stone-400 text-sm">No challenges yet</p>
+              <div className="mt-3 space-y-1 text-xs text-stone-400 max-w-sm mx-auto">
                 <p>Create a multi-category challenge like &ldquo;75 Hard&rdquo; with daily tasks to check off:</p>
                 <p>2 workouts, diet rules, water intake, reading goals, and more.</p>
               </div>
@@ -893,7 +896,7 @@ export default function Goals() {
               )}
               {inactiveChallenges.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-2">Inactive</p>
+                  <p className="text-xs text-stone-400 uppercase tracking-wider font-medium mb-2">Inactive</p>
                   <div className="space-y-3">
                     {inactiveChallenges.map(ch => (
                       <ChallengeCard

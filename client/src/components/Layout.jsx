@@ -15,17 +15,17 @@ const navItems = [
 
 export default function Layout({ children }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-stone-50">
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 bg-slate-900 flex flex-col">
-        <div className="p-6 border-b border-slate-700">
+      <aside className="w-60 flex-shrink-0 bg-stone-900 flex flex-col">
+        <div className="p-6 border-b border-stone-700">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white text-lg font-bold">H</span>
+            <div className="w-9 h-9 bg-amber-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-lg font-bold font-serif">H</span>
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-tight">Health &amp;</p>
-              <p className="text-slate-400 text-xs">Wellness Dashboard</p>
+              <p className="text-stone-400 text-xs">Wellness Dashboard</p>
             </div>
           </div>
         </div>
@@ -38,8 +38,8 @@ export default function Layout({ children }) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-amber-700 text-white'
+                    : 'text-stone-400 hover:text-white hover:bg-stone-800'
                 }`
               }
             >
@@ -49,8 +49,8 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
-          <p className="text-slate-500 text-xs text-center">All data stored locally</p>
+        <div className="p-4 border-t border-stone-700">
+          <p className="text-stone-500 text-xs text-center">All data stored locally</p>
         </div>
       </aside>
 

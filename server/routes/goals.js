@@ -143,7 +143,14 @@ function computeStatus(goal, today) {
       }
 
     } else if (goal.category === 'exercise') {
-      // metric_key format: 'sessions', 'minutes', 'streak',
+      // Simple text goal (metric_key is a JSON array of tags or empty)
+      if (!goal.metric_key || goal.metric_key.startsWith('[')) {
+        status = 'manual';
+        message = 'Personal exercise goal';
+        return { status, current_value: null, message, next_due: null };
+      }
+
+      // Legacy metric-based goal: 'sessions', 'minutes', 'streak',
       // or 'sessions:Running', 'minutes:Cycling' to filter by activity type
       const [metric, activityFilter] = (goal.metric_key || 'sessions').split(':');
       const startDate = offsetDate(today, -(days - 1));

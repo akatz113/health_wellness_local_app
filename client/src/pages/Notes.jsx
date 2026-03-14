@@ -4,11 +4,11 @@ import { format, parseISO } from 'date-fns';
 
 const SOURCE_OPTIONS = ['personal', 'doctor', 'research', 'book', 'other'];
 const SOURCE_COLORS = {
-  doctor: 'bg-blue-100 text-blue-700',
+  doctor: 'bg-amber-100 text-amber-700',
   research: 'bg-purple-100 text-purple-700',
-  personal: 'bg-gray-100 text-gray-600',
+  personal: 'bg-stone-100 text-stone-600',
   book: 'bg-amber-100 text-amber-700',
-  other: 'bg-slate-100 text-slate-600',
+  other: 'bg-stone-100 text-stone-600',
 };
 
 const emptyForm = { title: '', content: '', source: 'personal', tags: [] };
@@ -82,8 +82,8 @@ export default function Notes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notes</h1>
-          <p className="text-sm text-gray-500 mt-1">Knowledge from doctors, research, and personal insights</p>
+          <h1 className="text-2xl font-bold text-stone-900">Notes</h1>
+          <p className="text-sm text-stone-500 mt-1">Knowledge from doctors, research, and personal insights</p>
         </div>
         <button className="btn-primary" onClick={openAdd}>
           <Plus size={16} /> Add Note
@@ -93,22 +93,22 @@ export default function Notes() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
             type="text" placeholder="Search notes..." value={search}
             onChange={e => setSearch(e.target.value)} className="input pl-9"
           />
         </div>
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
           <button
             onClick={() => setFilterSource('')}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${!filterSource ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${!filterSource ? 'bg-white shadow text-stone-900' : 'text-stone-500'}`}
           >All</button>
           {SOURCE_OPTIONS.map(s => (
             <button
               key={s}
               onClick={() => setFilterSource(filterSource === s ? '' : s)}
-              className={`px-3 py-1 text-sm rounded-md capitalize transition-colors ${filterSource === s ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+              className={`px-3 py-1 text-sm rounded-md capitalize transition-colors ${filterSource === s ? 'bg-white shadow text-stone-900' : 'text-stone-500'}`}
             >{s}</button>
           ))}
         </div>
@@ -117,11 +117,11 @@ export default function Notes() {
       {/* Notes grid */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : notes.length === 0 ? (
         <div className="card text-center py-16">
-          <p className="text-gray-400 text-sm">No notes found</p>
+          <p className="text-stone-400 text-sm">No notes found</p>
           <button className="btn-primary mt-4" onClick={openAdd}>Add your first note</button>
         </div>
       ) : (
@@ -133,22 +133,22 @@ export default function Notes() {
               onClick={() => setViewingNote(note)}
             >
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1">{note.title}</h3>
+                <h3 className="font-semibold text-stone-900 line-clamp-2 flex-1">{note.title}</h3>
                 <span className={`text-xs px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${SOURCE_COLORS[note.source] || SOURCE_COLORS.other}`}>
                   {note.source}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 line-clamp-4 flex-1">{note.content}</p>
+              <p className="text-sm text-stone-600 line-clamp-4 flex-1">{note.content}</p>
               {note.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-3">
                   {note.tags.map(tag => (
-                    <span key={tag} className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    <span key={tag} className="inline-flex items-center gap-1 text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">
                       <Tag size={10} /> {tag}
                     </span>
                   ))}
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-3">{format(parseISO(note.updated_at), 'MMM d, yyyy')}</p>
+              <p className="text-xs text-stone-400 mt-3">{format(parseISO(note.updated_at), 'MMM d, yyyy')}</p>
             </div>
           ))}
         </div>
@@ -164,9 +164,9 @@ export default function Notes() {
                   <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${SOURCE_COLORS[viewingNote.source] || SOURCE_COLORS.other}`}>
                     {viewingNote.source}
                   </span>
-                  <span className="text-xs text-gray-400">{format(parseISO(viewingNote.updated_at), 'MMM d, yyyy')}</span>
+                  <span className="text-xs text-stone-400">{format(parseISO(viewingNote.updated_at), 'MMM d, yyyy')}</span>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">{viewingNote.title}</h2>
+                <h2 className="text-xl font-bold text-stone-900">{viewingNote.title}</h2>
               </div>
               <div className="flex gap-1">
                 <button onClick={() => { setViewingNote(null); openEdit(viewingNote); }} className="btn-ghost p-1.5"><Pencil size={16} /></button>
@@ -175,11 +175,11 @@ export default function Notes() {
               </div>
             </div>
             <div className="p-6">
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{viewingNote.content}</p>
+              <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{viewingNote.content}</p>
               {viewingNote.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t">
                   {viewingNote.tags.map(tag => (
-                    <span key={tag} className="inline-flex items-center gap-1 text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                    <span key={tag} className="inline-flex items-center gap-1 text-sm bg-stone-100 text-stone-600 px-3 py-1 rounded-full">
                       <Tag size={12} /> {tag}
                     </span>
                   ))}
@@ -225,9 +225,9 @@ export default function Notes() {
                 {form.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {form.tags.map(tag => (
-                      <span key={tag} className="inline-flex items-center gap-1.5 text-sm bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full">
+                      <span key={tag} className="inline-flex items-center gap-1.5 text-sm bg-amber-100 text-amber-700 px-3 py-0.5 rounded-full">
                         {tag}
-                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-blue-900"><X size={12} /></button>
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-amber-900"><X size={12} /></button>
                       </span>
                     ))}
                   </div>

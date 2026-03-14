@@ -16,9 +16,9 @@ const emptyForm = {
 
 const statusIcon = { upcoming: Clock, completed: CheckCircle, cancelled: XCircle };
 const statusColor = {
-  upcoming: 'text-blue-600 bg-blue-50',
+  upcoming: 'text-amber-700 bg-amber-50',
   completed: 'text-green-600 bg-green-50',
-  cancelled: 'text-gray-400 bg-gray-100',
+  cancelled: 'text-stone-400 bg-stone-100',
 };
 
 export default function Appointments() {
@@ -91,8 +91,8 @@ export default function Appointments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your medical appointments</p>
+          <h1 className="text-2xl font-bold text-stone-900">Appointments</h1>
+          <p className="text-sm text-stone-500 mt-1">Manage your medical appointments</p>
         </div>
         <button className="btn-primary" onClick={openAdd}>
           <Plus size={16} /> Add Appointment
@@ -100,13 +100,13 @@ export default function Appointments() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-stone-100 p-1 rounded-lg w-fit">
         {[['upcoming', 'Upcoming'], ['completed', 'Completed'], ['cancelled', 'Cancelled'], ['', 'All']].map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFilterStatus(val)}
             className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              filterStatus === val ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              filterStatus === val ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'
             }`}
           >
             {label}
@@ -117,11 +117,11 @@ export default function Appointments() {
       {/* Appointments list */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : appointments.length === 0 ? (
         <div className="card text-center py-16">
-          <p className="text-gray-400 text-sm">No appointments found</p>
+          <p className="text-stone-400 text-sm">No appointments found</p>
           <button className="btn-primary mt-4" onClick={openAdd}>Schedule an appointment</button>
         </div>
       ) : (
@@ -139,8 +139,8 @@ export default function Appointments() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-semibold text-gray-900">{appt.title}</p>
-                      <p className="text-sm text-gray-600 mt-0.5">
+                      <p className="font-semibold text-stone-900">{appt.title}</p>
+                      <p className="text-sm text-stone-600 mt-0.5">
                         {appt.doctor_name && <span>{appt.doctor_name}</span>}
                         {appt.doctor_name && appt.specialty && <span className="mx-1">·</span>}
                         {appt.specialty && <span>{appt.specialty}</span>}
@@ -148,17 +148,17 @@ export default function Appointments() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right">
-                        <p className={`text-sm font-medium ${isOverdue ? 'text-orange-600' : 'text-gray-700'}`}>
+                        <p className={`text-sm font-medium ${isOverdue ? 'text-orange-600' : 'text-stone-700'}`}>
                           {format(date, 'MMM d, yyyy')}
                         </p>
-                        <p className="text-xs text-gray-400">{format(date, 'h:mm a')}</p>
+                        <p className="text-xs text-stone-400">{format(date, 'h:mm a')}</p>
                       </div>
                     </div>
                   </div>
                   {(appt.location || appt.notes) && (
                     <div className="mt-2 space-y-1">
-                      {appt.location && <p className="text-xs text-gray-500">Location: {appt.location}</p>}
-                      {appt.notes && <p className="text-xs text-gray-400 line-clamp-2">{appt.notes}</p>}
+                      {appt.location && <p className="text-xs text-stone-500">Location: {appt.location}</p>}
+                      {appt.notes && <p className="text-xs text-stone-400 line-clamp-2">{appt.notes}</p>}
                     </div>
                   )}
                   {isOverdue && <p className="text-xs text-orange-600 font-medium mt-1">Overdue — mark as completed or update date</p>}

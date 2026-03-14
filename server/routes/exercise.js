@@ -94,6 +94,29 @@ function buildSuggestions(weatherCode, tempF, windMph, precipitation) {
   return { outdoorOk, isWindy, reason, suggestions };
 }
 
+// ── Exercise Week Goals ───────────────────────────────────────────────────────
+
+router.get('/goals', (req, res) => {
+  const row = db.prepare("SELECT value FROM user_settings WHERE key = 'exercise_week_goals'").get();
+  if (!row) return res.json({ cardio: null, strength: null, flexibility: null });
+  try { res.json(JSON.parse(row.value)); }
+  catch { res.json({ cardio: null, strength: null, flexibility: null }); }
+});
+
+router.put('/goals', (req, res) => {
+  const { cardio, strength, flexibility } = req.body;
+  const value = JSON.stringify({
+    cardio: cardio != null && cardio > 0 ? Number(cardio) : null,
+    strength: strength != null && strength > 0 ? Number(strength) : null,
+    flexibility: flexibility != null && flexibility > 0 ? Number(flexibility) : null,
+  });
+  db.prepare(`
+    INSERT INTO user_settings (key, value) VALUES ('exercise_week_goals', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(value);
+  res.json(JSON.parse(value));
+});
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
 router.get('/location', (req, res) => {
