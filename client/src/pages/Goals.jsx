@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, CheckCircle2, AlertCircle, Clock, HelpCircle, ToggleLeft, ToggleRight, Trophy, Square, CheckSquare, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, CheckCircle2, AlertCircle, Clock, HelpCircle, ToggleLeft, ToggleRight, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
 
 const PERIODS = [
   { value: 'daily', label: 'Daily' },
@@ -55,7 +55,8 @@ const emptyForm = {
 // ─── GoalCard (unchanged) ────────────────────────────────────────────────────
 
 function GoalCard({ goal, onEdit, onDelete, onToggle }) {
-  const cfg = STATUS_CONFIG[goal.status] || STATUS_CONFIG.no_data;
+  const hasStatus = goal.status && goal.status !== 'no_data';
+  const cfg = (hasStatus ? STATUS_CONFIG[goal.status] : null) || STATUS_CONFIG.no_data;
   const Icon = cfg.icon;
   const cat = CATEGORY_LABELS[goal.category];
 
@@ -70,19 +71,21 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
   const progressPct = showProgress ? Math.min((goal.current_value / goal.target_value) * 100, 100) : 0;
 
   return (
-    <div className={`card border ${cfg.border} ${!goal.active ? 'opacity-50' : ''}`}>
+    <div className={`card border ${hasStatus ? cfg.border : 'border-stone-200'} ${!goal.active ? 'opacity-50' : ''}`}>
       <div className="p-5">
         <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg flex-shrink-0 ${cfg.bg}`}>
-            <Icon size={18} className={cfg.text} />
-          </div>
+          {hasStatus && (
+            <div className={`p-2 rounded-lg flex-shrink-0 ${cfg.bg}`}>
+              <Icon size={18} className={cfg.text} />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div>
                 <h3 className="font-semibold text-stone-900">{goal.title}</h3>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat?.color}`}>{cat?.label}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>{cfg.label}</span>
+                  {hasStatus && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>{cfg.label}</span>}
                   {!isSimpleExercise && <span className="text-xs text-stone-400 capitalize">{goal.period}</span>}
                 </div>
               </div>
@@ -95,7 +98,7 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
               </div>
             </div>
 
-            <p className={`text-sm mt-2 ${cfg.text}`}>{goal.message}</p>
+            {hasStatus && <p className={`text-sm mt-2 ${cfg.text}`}>{goal.message}</p>}
 
             {isSimpleExercise && exerciseTags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -135,45 +138,33 @@ function GoalCard({ goal, onEdit, onDelete, onToggle }) {
 
 // ─── ChallengeCard ───────────────────────────────────────────────────────────
 
-function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
+function ChallengeCard({ challenge, onEdit, onDelete, onToggle }) {
   const [expanded, setExpanded] = useState(true);
-  const [showHistory, setShowHistory] = useState(false);
-  const [history, setHistory] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
   const items = challenge.items || [];
-  const completedCount = items.filter(i => i.completed).length;
-  const totalCount = items.length;
-  const allDone = totalCount > 0 && completedCount === totalCount;
-  const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   const startDate = challenge.start_date;
   const endDate = challenge.end_date;
-  const daysSinceStart = startDate ? Math.floor((new Date(today) - new Date(startDate)) / 86400000) + 1 : null;
+  const daysSinceStart = startDate ? Math.max(0, Math.floor((new Date(today) - new Date(startDate)) / 86400000)) + 1 : null;
   const totalDays = startDate && endDate ? Math.floor((new Date(endDate) - new Date(startDate)) / 86400000) + 1 : null;
-
-  const loadHistory = async () => {
-    if (history) { setShowHistory(!showHistory); return; }
-    const days = totalDays ? Math.min(totalDays, 90) : 30;
-    const data = await fetch(`/api/challenges/${challenge.id}/history?days=${days}`).then(r => r.json());
-    setHistory(data);
-    setShowHistory(true);
-  };
+  const timeProgressPct = totalDays && daysSinceStart !== null ? Math.min(100, (daysSinceStart / totalDays) * 100) : null;
+  const isComplete = totalDays && daysSinceStart !== null && daysSinceStart >= totalDays;
 
   return (
-    <div className={`card border ${allDone ? 'border-green-200' : 'border-indigo-200'} ${!challenge.active ? 'opacity-50' : ''}`}>
+    <div className={`card border ${isComplete ? 'border-green-200' : 'border-indigo-200'} ${!challenge.active ? 'opacity-50' : ''}`}>
       <div className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={`p-2 rounded-lg flex-shrink-0 ${allDone ? 'bg-green-50' : 'bg-indigo-50'}`}>
-              <Trophy size={18} className={allDone ? 'text-green-600' : 'text-indigo-600'} />
+            <div className={`p-2 rounded-lg flex-shrink-0 ${isComplete ? 'bg-green-50' : 'bg-indigo-50'}`}>
+              <Trophy size={18} className={isComplete ? 'text-green-600' : 'text-indigo-600'} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-stone-900">{challenge.title}</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700">Challenge</span>
-                {allDone && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">All Done Today</span>}
+                {isComplete && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Complete</span>}
               </div>
               {challenge.description && (
                 <p className="text-sm text-stone-500 mt-1">{challenge.description}</p>
@@ -197,82 +188,32 @@ function ChallengeCard({ challenge, onCheckIn, onEdit, onDelete, onToggle }) {
           </div>
         </div>
 
-        {/* Today's progress bar */}
-        <div className="mt-3 space-y-1">
-          <div className="flex justify-between text-xs text-stone-500">
-            <span>Today&apos;s progress</span>
-            <span>{completedCount} / {totalCount}</span>
-          </div>
-          <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${allDone ? 'bg-green-500' : progressPct >= 50 ? 'bg-indigo-500' : 'bg-indigo-300'}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Checklist items */}
-        {expanded && (
-          <div className="mt-4 space-y-1.5">
-            {items.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onCheckIn(item.id, today, !item.completed)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                  item.completed
-                    ? 'bg-green-50 hover:bg-green-100'
-                    : 'bg-stone-50 hover:bg-stone-100'
-                }`}
-              >
-                {item.completed
-                  ? <CheckSquare size={18} className="text-green-600 flex-shrink-0" />
-                  : <Square size={18} className="text-stone-400 flex-shrink-0" />
-                }
-                <span className={`text-sm flex-1 ${item.completed ? 'text-green-700 line-through' : 'text-stone-700'}`}>
-                  {item.title}
-                </span>
-                {item.target_value && (
-                  <span className="text-xs text-stone-400">{item.target_value} {item.target_unit || ''} / {item.period}</span>
-                )}
-              </button>
-            ))}
+        {/* Time-based progress bar */}
+        {timeProgressPct !== null && (
+          <div className="mt-3 space-y-1">
+            <div className="flex justify-between text-xs text-stone-500">
+              <span>Progress</span>
+              <span>Day {daysSinceStart} of {totalDays}</span>
+            </div>
+            <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${isComplete ? 'bg-green-500' : timeProgressPct >= 50 ? 'bg-indigo-500' : 'bg-indigo-300'}`}
+                style={{ width: `${timeProgressPct}%` }}
+              />
+            </div>
           </div>
         )}
 
-        {/* History toggle */}
-        <div className="mt-3 flex">
-          <button onClick={loadHistory} className="text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1">
-            <Calendar size={12} /> {showHistory ? 'Hide history' : 'View history'}
-          </button>
-        </div>
-
-        {/* History grid */}
-        {showHistory && history && (
-          <div className="mt-3 overflow-x-auto">
-            <div className="flex gap-0.5 min-w-0">
-              {history.map(day => {
-                const pct = day.totalCount > 0 ? day.completedCount / day.totalCount : 0;
-                const bg = pct === 0 ? 'bg-stone-200' : pct < 1 ? 'bg-indigo-300' : 'bg-green-500';
-                const dateLabel = new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                return (
-                  <div key={day.date} className="group relative flex flex-col items-center">
-                    <div className={`w-4 h-4 rounded-sm ${bg}`} />
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-stone-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                      {dateLabel}: {day.completedCount}/{day.totalCount}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-xs text-stone-400 mt-1">
-              <span>{history.length} days</span>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-stone-200 inline-block" /> None</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-300 inline-block" /> Partial</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" /> All</span>
-              </div>
-            </div>
-          </div>
+        {/* Items list */}
+        {expanded && items.length > 0 && (
+          <ul className="mt-4 space-y-1.5">
+            {items.map(item => (
+              <li key={item.id} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-stone-50 text-sm text-stone-700">
+                <span className="text-indigo-400 mt-0.5">•</span>
+                <span>{item.title}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>
@@ -286,7 +227,7 @@ const emptyChallengeForm = {
   description: '',
   start_date: new Date().toISOString().slice(0, 10),
   end_date: '',
-  items: [{ title: '', item_type: 'checklist', target_value: '', target_unit: '', period: 'daily' }],
+  items: [{ title: '' }],
 };
 
 function ChallengeFormModal({ initial, onSave, onClose }) {
@@ -305,7 +246,7 @@ function ChallengeFormModal({ initial, onSave, onClose }) {
   const addItem = () => {
     setForm(f => ({
       ...f,
-      items: [...f.items, { title: '', item_type: 'checklist', target_value: '', target_unit: '', period: 'daily' }],
+      items: [...f.items, { title: '' }],
     }));
   };
 
@@ -319,10 +260,7 @@ function ChallengeFormModal({ initial, onSave, onClose }) {
     setSaving(true);
     await onSave({
       ...form,
-      items: form.items.filter(i => i.title.trim()).map(i => ({
-        ...i,
-        target_value: i.target_value !== '' ? parseFloat(i.target_value) : null,
-      })),
+      items: form.items.filter(i => i.title.trim()),
     });
     setSaving(false);
   };
@@ -358,68 +296,28 @@ function ChallengeFormModal({ initial, onSave, onClose }) {
 
           {/* Challenge Items */}
           <div>
-            <label className="label">Daily Tasks / Rules *</label>
-            <p className="text-xs text-stone-400 mb-2">Add each task or rule you need to check off each day</p>
+            <label className="label">Rules / Elements *</label>
+            <p className="text-xs text-stone-400 mb-2">List the rules or components of this challenge</p>
             <div className="space-y-2">
               {form.items.map((item, idx) => (
-                <div key={idx} className="bg-indigo-50 rounded-xl p-3 border border-indigo-100 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      className="input flex-1"
-                      value={item.title}
-                      onChange={e => updateItem(idx, 'title', e.target.value)}
-                      placeholder={`e.g. ${['2 workouts', 'No desserts', '1 gallon of water', '10 pages of reading', 'No fast food', 'No alcohol'][idx % 6]}`}
-                      required={idx === 0}
-                    />
-                    {form.items.length > 1 && (
-                      <button type="button" onClick={() => removeItem(idx)} className="btn-ghost p-1.5 text-red-400 hover:text-red-600">
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                  {/* Optional: target value for quantifiable items */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="input text-xs py-1.5 w-28"
-                      value={item.item_type}
-                      onChange={e => updateItem(idx, 'item_type', e.target.value)}
-                    >
-                      <option value="checklist">Checklist</option>
-                      <option value="metric">Has a target</option>
-                    </select>
-                    {item.item_type === 'metric' && (
-                      <>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          className="input text-xs py-1.5 w-20"
-                          value={item.target_value}
-                          onChange={e => updateItem(idx, 'target_value', e.target.value)}
-                          placeholder="Target"
-                        />
-                        <input
-                          className="input text-xs py-1.5 w-24"
-                          value={item.target_unit}
-                          onChange={e => updateItem(idx, 'target_unit', e.target.value)}
-                          placeholder="Unit"
-                        />
-                        <select
-                          className="input text-xs py-1.5 w-24"
-                          value={item.period}
-                          onChange={e => updateItem(idx, 'period', e.target.value)}
-                        >
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                        </select>
-                      </>
-                    )}
-                  </div>
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    className="input flex-1"
+                    value={item.title}
+                    onChange={e => updateItem(idx, 'title', e.target.value)}
+                    placeholder={`e.g. ${['2 workouts per day', 'No desserts', '1 gallon of water', '10 pages of reading', 'No fast food', 'No alcohol'][idx % 6]}`}
+                    required={idx === 0}
+                  />
+                  {form.items.length > 1 && (
+                    <button type="button" onClick={() => removeItem(idx)} className="btn-ghost p-1.5 text-red-400 hover:text-red-600">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
             <button type="button" onClick={addItem} className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-              <Plus size={14} /> Add another task
+              <Plus size={14} /> Add another
             </button>
           </div>
 
@@ -557,15 +455,6 @@ export default function Goals() {
     loadChallenges();
   };
 
-  const handleCheckIn = async (itemId, date, completed) => {
-    await fetch('/api/challenges/check-in', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ challenge_item_id: itemId, check_date: date, completed }),
-    });
-    loadChallenges();
-  };
-
   const openEditChallenge = (ch) => {
     setEditingChallenge({
       ...ch,
@@ -633,12 +522,11 @@ export default function Goals() {
         <>
           {/* Summary row */}
           {goals.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Off Track', count: counts.off_track, bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
                 { label: 'Due Soon', count: counts.due_soon,  bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
                 { label: 'On Track', count: counts.on_track,  bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-                { label: 'No Data',  count: counts.no_data,   bg: 'bg-stone-50',  text: 'text-stone-600', border: 'border-stone-200' },
               ].map(({ label, count, bg, text, border }) => (
                 <div key={label} className={`rounded-xl border p-4 text-center ${bg} ${border}`}>
                   <p className={`text-2xl font-bold ${text}`}>{count}</p>
@@ -886,7 +774,6 @@ export default function Goals() {
                     <ChallengeCard
                       key={ch.id}
                       challenge={ch}
-                      onCheckIn={handleCheckIn}
                       onEdit={openEditChallenge}
                       onDelete={handleDeleteChallenge}
                       onToggle={handleToggleChallenge}
@@ -902,7 +789,6 @@ export default function Goals() {
                       <ChallengeCard
                         key={ch.id}
                         challenge={ch}
-                        onCheckIn={handleCheckIn}
                         onEdit={openEditChallenge}
                         onDelete={handleDeleteChallenge}
                         onToggle={handleToggleChallenge}

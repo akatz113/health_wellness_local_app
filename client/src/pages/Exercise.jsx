@@ -1,8 +1,141 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Trash2, X, Save, BookOpen, Eye, Pencil, GripVertical,
-  Settings,
+  Settings, CloudRain, Sun, Cloud, CloudSnow, Zap, Wind,
 } from 'lucide-react';
+
+// ─── Weather Forecast ────────────────────────────────────────────────────────
+
+const WMO_DESCRIPTIONS = {
+  0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Icy Fog',
+  51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
+  61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+  71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow', 77: 'Snow Grains',
+  80: 'Showers', 81: 'Heavy Showers', 82: 'Violent Showers',
+  85: 'Snow Showers', 86: 'Heavy Snow Showers',
+  95: 'Thunderstorm', 96: 'T-storm + Hail', 99: 'T-storm + Heavy Hail',
+};
+
+function WeatherIcon({ code, size = 16, className = '' }) {
+  if (code === 0 || code === 1) return <Sun size={size} className={className || 'text-amber-400'} />;
+  if (code === 2 || code === 3) return <Cloud size={size} className={className || 'text-stone-400'} />;
+  if (code >= 71 && code <= 77) return <CloudSnow size={size} className={className || 'text-blue-300'} />;
+  if (code === 95 || code === 96 || code === 99) return <Zap size={size} className={className || 'text-yellow-500'} />;
+  if (code >= 51) return <CloudRain size={size} className={className || 'text-sky-500'} />;
+  return <Wind size={size} className={className || 'text-stone-400'} />;
+}
+
+function WeatherForecast() {
+  const [forecast, setForecast] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | loading | error | ok
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const loadWeather = () => {
+    if (!navigator.geolocation) { setStatus('error'); setErrorMsg('Geolocation not supported.'); return; }
+    setStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.latitude}&longitude=${coords.longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto&forecast_days=7`;
+          const data = await fetch(url).then(r => r.json());
+          const { time, temperature_2m_max, temperature_2m_min, precipitation_sum, weathercode } = data.daily;
+          setForecast(time.map((date, i) => ({
+            date,
+            high: Math.round(temperature_2m_max[i]),
+            low: Math.round(temperature_2m_min[i]),
+            precip: precipitation_sum[i],
+            code: weathercode[i],
+          })));
+          setStatus('ok');
+        } catch {
+          setStatus('error');
+          setErrorMsg('Could not load weather data.');
+        }
+      },
+      () => { setStatus('error'); setErrorMsg('Location access denied.'); }
+    );
+  };
+
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  if (status === 'idle') {
+    return (
+      <div className="card border border-sky-100 bg-sky-50 px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Weekly Weather</p>
+          <p className="text-xs text-sky-500 mt-0.5">Load forecast to help plan outdoor workouts</p>
+        </div>
+        <button onClick={loadWeather} className="btn-ghost text-sky-700 text-xs px-3 py-1.5 border border-sky-200 rounded-lg hover:bg-sky-100">
+          Show forecast
+        </button>
+      </div>
+    );
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="card border border-sky-100 bg-sky-50 px-4 py-3 flex items-center gap-3">
+        <div className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+        <p className="text-xs text-sky-600">Getting your location…</p>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="card border border-stone-200 px-4 py-3 flex items-center justify-between">
+        <p className="text-xs text-stone-400">{errorMsg}</p>
+        <button onClick={loadWeather} className="text-xs text-amber-700 hover:underline">Retry</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card border border-sky-100 overflow-hidden">
+      <div className="px-4 py-2 bg-sky-50 border-b border-sky-100 flex items-center justify-between">
+        <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">7-Day Forecast</p>
+        <button onClick={loadWeather} className="text-xs text-sky-500 hover:text-sky-700">Refresh</button>
+      </div>
+      <div className="grid grid-cols-7 divide-x divide-stone-100">
+        {forecast.map(day => {
+          const d = new Date(day.date + 'T12:00:00');
+          const label = DAY_LABELS[d.getDay()];
+          const isToday = day.date === new Date().toISOString().slice(0, 10);
+          const isGood = day.precip == null || day.precip < 0.1;
+          const highColor =
+            day.high >= 90 ? 'text-red-600' :
+            day.high >= 80 ? 'text-orange-500' :
+            day.high >= 65 ? 'text-green-600' :
+            day.high >= 45 ? 'text-sky-600' :
+            'text-blue-400';
+          const lowColor =
+            day.low >= 70 ? 'text-orange-400' :
+            day.low >= 50 ? 'text-sky-500' :
+            'text-blue-400';
+          return (
+            <div key={day.date} title={WMO_DESCRIPTIONS[day.code] || ''} className={`flex flex-col items-center py-3 px-1 ${isToday ? 'bg-sky-50' : ''}`}>
+              <p className={`text-xs font-semibold ${isToday ? 'text-sky-700' : 'text-stone-500'}`}>{label}</p>
+              <div className="my-1"><WeatherIcon code={day.code} size={18} /></div>
+              <p className={`text-xs font-bold ${highColor}`}>{day.high}°</p>
+              <p className={`text-xs ${lowColor}`}>{day.low}°</p>
+              {day.precip > 0 && (
+                <p className="text-xs text-sky-500">{day.precip.toFixed(1)}"</p>
+              )}
+              <div className="mt-auto pt-2 h-4 flex items-center justify-center">
+                {isGood && <span className="text-xs text-green-500 font-bold">✓</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="px-4 py-1.5 bg-stone-50 border-t border-stone-100 flex items-center gap-3 text-xs text-stone-400">
+        <span className="flex items-center gap-1"><span className="text-green-500">✓</span> Good for outdoor</span>
+        <span>· hi/lo °F · precip (in)</span>
+      </div>
+    </div>
+  );
+}
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -551,6 +684,9 @@ export default function Exercise() {
               <span className="text-green-600">Flexibility: {planTotals.flexibility} min</span>
             </div>
           )}
+
+          {/* Weather forecast */}
+          <WeatherForecast />
 
           {/* Weekly grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">

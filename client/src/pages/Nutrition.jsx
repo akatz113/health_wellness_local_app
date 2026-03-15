@@ -638,12 +638,37 @@ export default function Nutrition() {
                     </button>
                   </div>
 
-                  <div>
+                  <div className="space-y-1.5">
                     <label className="label">Servings</label>
-                    <input
-                      type="number" min="0.25" step="0.25" className="input w-32"
-                      value={servingSize} onChange={e => setServingSize(+e.target.value)}
-                    />
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <input
+                        type="number" min="0.25" step="0.25" className="input w-32"
+                        value={servingSize} onChange={e => setServingSize(+e.target.value)}
+                      />
+                      {(() => {
+                        const sz = foodDetail?.servingSize || selectedFood.servingSize;
+                        const unit = foodDetail?.servingSizeUnit || selectedFood.servingSizeUnit;
+                        const household = foodDetail?.householdServingFullText;
+                        if (!sz) return null;
+                        const oneServingMultiplier = +(sz / 100).toFixed(2);
+                        return (
+                          <div className="flex items-center gap-2 text-xs text-stone-500">
+                            <span>
+                              1 serving = <span className="font-medium text-stone-700">{sz}{unit}</span>
+                              {household && <span className="text-stone-400"> ({household})</span>}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setServingSize(oneServingMultiplier)}
+                              className="text-amber-700 hover:text-amber-900 underline"
+                            >
+                              Use 1 serving
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <p className="text-xs text-stone-400">Nutrients scaled per 100g × {servingSize} = {(servingSize * 100).toFixed(0)}g</p>
                   </div>
 
                   {foodDetail && (() => {

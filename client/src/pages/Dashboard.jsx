@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, CalendarDays, ArrowRight } from 'lucide-react';
+import { Plus, CalendarDays, ArrowRight, Trophy } from 'lucide-react';
 import { format, isFuture, parseISO, differenceInDays } from 'date-fns';
 
 const QUOTES = [
-  'The only person who can do this is you.',
+  'Know that it is you who will get you where you want to go, no one else.',
   'Small steps every day.',
   'You don\'t have to be perfect — just consistent.',
   'Your health is an investment, not an expense.',
@@ -84,15 +84,18 @@ function GoalEntry({ goal }) {
 export default function Dashboard() {
   const [goalStatuses, setGoalStatuses] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/goals/status').then(r => r.json()),
       fetch('/api/appointments').then(r => r.json()),
-    ]).then(([gs, appts]) => {
+      fetch('/api/challenges').then(r => r.json()),
+    ]).then(([gs, appts, chs]) => {
       setGoalStatuses(gs);
       setAppointments(appts);
+      setChallenges(chs);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -165,6 +168,72 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Active Challenges */}
+      {(() => {
+        const activeChallenges = challenges.filter(c => c.active);
+        if (activeChallenges.length === 0) return null;
+        const today = new Date().toISOString().slice(0, 10);
+        return (
+          <div className="mt-10 pt-6 border-t border-stone-200">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs uppercase tracking-widest text-stone-400 flex items-center gap-1.5">
+                <Trophy size={13} /> Active Challenges
+              </p>
+              <Link to="/goals" className="text-xs text-amber-700 hover:text-amber-900 flex items-center gap-1">
+                View all <ArrowRight size={13} />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {activeChallenges.map(ch => {
+                const startDate = ch.start_date;
+                const endDate = ch.end_date;
+                const daysSinceStart = startDate ? Math.max(0, Math.floor((new Date(today) - new Date(startDate)) / 86400000)) + 1 : null;
+                const totalDays = startDate && endDate ? Math.floor((new Date(endDate) - new Date(startDate)) / 86400000) + 1 : null;
+                const progressPct = totalDays && daysSinceStart !== null ? Math.min(100, (daysSinceStart / totalDays) * 100) : null;
+                const isComplete = totalDays && daysSinceStart !== null && daysSinceStart >= totalDays;
+                const items = ch.items || [];
+
+                return (
+                  <div key={ch.id} className="py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-lg font-medium text-stone-800 leading-snug">{ch.title}</p>
+                      {isComplete && <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Complete</span>}
+                    </div>
+                    {ch.description && (
+                      <p className="text-sm italic text-stone-500 mb-2">{ch.description}</p>
+                    )}
+                    {items.length > 0 && (
+                      <ul className="space-y-1 mb-2">
+                        {items.map(item => (
+                          <li key={item.id} className="flex items-start gap-2 text-sm text-stone-600">
+                            <span className="text-indigo-400 mt-0.5">•</span>
+                            <span>{item.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {progressPct !== null && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-stone-400">
+                          <span>Day {daysSinceStart} of {totalDays}</span>
+                          <span>{Math.round(progressPct)}%</span>
+                        </div>
+                        <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${isComplete ? 'bg-green-500' : progressPct >= 50 ? 'bg-indigo-500' : 'bg-indigo-300'}`}
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Don't forget — upcoming appointments */}
       {upcomingAppts.length > 0 && (

@@ -203,6 +203,8 @@ const db = {
       ? new SQL.Database(fs.readFileSync(DB_PATH))
       : new SQL.Database();
     _db.exec(SCHEMA);
+    // Migrations
+    try { _db.exec('ALTER TABLE notes ADD COLUMN book_title TEXT'); } catch {}
     saveDB();
   },
   prepare(sql) {

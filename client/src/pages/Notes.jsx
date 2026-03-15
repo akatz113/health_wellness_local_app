@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Plus, Pencil, Trash2, X, Search, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Search, Tag, BookOpen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const SOURCE_OPTIONS = ['personal', 'doctor', 'research', 'book', 'other'];
@@ -11,7 +11,7 @@ const SOURCE_COLORS = {
   other: 'bg-stone-100 text-stone-600',
 };
 
-const emptyForm = { title: '', content: '', source: 'personal', tags: [] };
+const emptyForm = { title: '', content: '', source: 'personal', tags: [], book_title: '' };
 
 export default function Notes() {
   const [notes, setNotes] = useState([]);
@@ -22,23 +22,30 @@ export default function Notes() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [filterBook, setFilterBook] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [viewingNote, setViewingNote] = useState(null);
+  const [bookTitles, setBookTitles] = useState([]);
+
+  const loadBookTitles = () =>
+    fetch('/api/notes/books').then(r => r.json()).then(setBookTitles);
 
   const load = () => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (filterSource) params.set('source', filterSource);
+    if (filterBook) params.set('book', filterBook);
     fetch(`/api/notes?${params}`).then(r => r.json()).then(data => {
       setNotes(data);
       setLoading(false);
     });
   };
 
-  useEffect(() => { load(); }, [search, filterSource]);
+  useEffect(() => { loadBookTitles(); }, []);
+  useEffect(() => { load(); }, [search, filterSource, filterBook]);
 
   const openAdd = () => { setForm(emptyForm); setEditingId(null); setTagInput(''); setShowForm(true); };
-  const openEdit = (n) => { setForm({ ...n }); setEditingId(n.id); setTagInput(''); setShowForm(true); };
+  const openEdit = (n) => { setForm({ ...n, book_title: n.book_title || '' }); setEditingId(n.id); setTagInput(''); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditingId(null); };
 
   const handleSubmit = async (e) => {
@@ -54,6 +61,7 @@ export default function Notes() {
     setSaving(false);
     closeForm();
     load();
+    loadBookTitles();
   };
 
   const handleDelete = async (id) => {
@@ -101,18 +109,36 @@ export default function Notes() {
         </div>
         <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
           <button
-            onClick={() => setFilterSource('')}
+            onClick={() => { setFilterSource(''); setFilterBook(''); }}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${!filterSource ? 'bg-white shadow text-stone-900' : 'text-stone-500'}`}
           >All</button>
           {SOURCE_OPTIONS.map(s => (
             <button
               key={s}
-              onClick={() => setFilterSource(filterSource === s ? '' : s)}
+              onClick={() => { setFilterSource(filterSource === s ? '' : s); setFilterBook(''); }}
               className={`px-3 py-1 text-sm rounded-md capitalize transition-colors ${filterSource === s ? 'bg-white shadow text-stone-900' : 'text-stone-500'}`}
             >{s}</button>
           ))}
         </div>
       </div>
+
+      {/* Book sub-filter */}
+      {bookTitles.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-stone-400 flex items-center gap-1"><BookOpen size={12} /> Books:</span>
+          <button
+            onClick={() => setFilterBook('')}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${!filterBook ? 'bg-amber-100 text-amber-700 border-amber-200' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+          >All</button>
+          {bookTitles.map(book => (
+            <button
+              key={book}
+              onClick={() => { setFilterBook(filterBook === book ? '' : book); setFilterSource(filterBook === book ? filterSource : 'book'); }}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${filterBook === book ? 'bg-amber-100 text-amber-700 border-amber-200' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+            >{book}</button>
+          ))}
+        </div>
+      )}
 
       {/* Notes grid */}
       {loading ? (
@@ -138,6 +164,11 @@ export default function Notes() {
                   {note.source}
                 </span>
               </div>
+              {note.source === 'book' && note.book_title && (
+                <p className="text-xs text-amber-700 flex items-center gap-1 mb-2">
+                  <BookOpen size={11} /> {note.book_title}
+                </p>
+              )}
               <p className="text-sm text-stone-600 line-clamp-4 flex-1">{note.content}</p>
               {note.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-3">
@@ -167,6 +198,11 @@ export default function Notes() {
                   <span className="text-xs text-stone-400">{format(parseISO(viewingNote.updated_at), 'MMM d, yyyy')}</span>
                 </div>
                 <h2 className="text-xl font-bold text-stone-900">{viewingNote.title}</h2>
+                {viewingNote.source === 'book' && viewingNote.book_title && (
+                  <p className="text-sm text-amber-700 flex items-center gap-1.5 mt-1">
+                    <BookOpen size={14} /> {viewingNote.book_title}
+                  </p>
+                )}
               </div>
               <div className="flex gap-1">
                 <button onClick={() => { setViewingNote(null); openEdit(viewingNote); }} className="btn-ghost p-1.5"><Pencil size={16} /></button>
@@ -209,6 +245,21 @@ export default function Notes() {
                   {SOURCE_OPTIONS.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
                 </select>
               </div>
+              {form.source === 'book' && (
+                <div>
+                  <label className="label">Book Title</label>
+                  <input
+                    className="input"
+                    list="book-titles-list"
+                    value={form.book_title}
+                    onChange={set('book_title')}
+                    placeholder="e.g. Outlive, Deep Nutrition"
+                  />
+                  <datalist id="book-titles-list">
+                    {bookTitles.map(b => <option key={b} value={b} />)}
+                  </datalist>
+                </div>
+              )}
               <div>
                 <label className="label">Content *</label>
                 <textarea className="input" rows={10} value={form.content} onChange={set('content')} required placeholder="Write your note here..." />
